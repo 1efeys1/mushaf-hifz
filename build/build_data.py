@@ -49,6 +49,24 @@ def normalize_rasm(s):
     return s.replace("ـٰ", "ٰ")
 
 
+# The dataset embeds Quranic annotation marks (waqf/pause signs like ۙ ۚ ۗ ۖ, the
+# rub-el-hizb marker ۞, the sajda mark ۩) into the SAME word entry as the word they
+# follow/precede, joined by a literal space — e.g. "لِّإِثْمٍۢ ۙ" or "۞ إِنَّ" — even
+# though it's one word position (one shared `location`/word-index, so ayah_len already
+# counts it as a single word). A handful of genuinely two-syllable-looking entries like
+# "بَعْدَ مَا" and "إِلْ يَاسِينَ" work the same way. The front-end's reveal cursor and
+# word-count logic re-split run text on plain spaces at runtime (data.js has no other way
+# to mark word boundaries), so a literal space here wrongly counted the mark as an extra
+# revealable "word" — desyncing the running word count from ayah_len and shifting the
+# ayah-number badge onto the wrong word, for any ayah containing one of these (roughly
+# 2700 of the 6236 ayat — most noticeable as an intermittent-looking bug since ayat
+# without any mark render fine). Collapsing to a non-breaking space fixes it: same visual
+# gap (mushaf lines are already `white-space:nowrap`, so breakability was never load-
+# bearing) but `.split(" ")` at runtime won't split on U+00A0.
+def merge_internal_annotation_spaces(s):
+    return re.sub(r" +", " ", s)
+
+
 def ensure_dataset():
     if os.path.isdir(PAGES_DIR):
         return
@@ -133,6 +151,7 @@ def main():
                         stripped = TRAILING_AYAH_DIGITS.sub("", word_text)
                         assert stripped != word_text, "expected trailing digits on last word %d:%d:%d" % (s, a, wi)
                         word_text = stripped
+                    word_text = merge_internal_annotation_spaces(word_text)
                     if cur_s == s and cur_a == a:
                         cur_words.append(word_text)
                     else:
