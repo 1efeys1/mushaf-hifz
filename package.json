@@ -1,0 +1,8 @@
+{
+  "name": "mushaf-hifz-pro",
+  "private": true,
+  "scripts": {
+    "dev": "bun run build/serve.js",
+    "start": "bun run build/serve.js"
+  }
+}
