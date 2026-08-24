@@ -467,6 +467,17 @@
     shell.classList.toggle("collapsed");
   });
 
+  // mobile: sidebar is a fixed overlay there, so clicking anywhere outside it (including
+  // the dimmed reader behind it) should close it, same as tapping ☰ again.
+  document.addEventListener("click", function(e){
+    if (window.innerWidth > 760) return;
+    if (shell.classList.contains("collapsed")) return;
+    var sidebarEl = document.getElementById("sidebar");
+    var toggleBtn = document.getElementById("toggleSidebar");
+    if (sidebarEl.contains(e.target) || toggleBtn.contains(e.target)) return;
+    shell.classList.add("collapsed");
+  });
+
   // ---------------- mobile: font/size settings tucked behind a gear icon ----------------
   var fontSettingsPanel = document.getElementById("fontSettings");
   document.getElementById("settingsToggle").addEventListener("click", function(e){
