@@ -6,3 +6,8 @@ mushaf-hifz-offline.html
 # Downloaded/extracted upstream dataset cache used by build/build_data.py — large,
 # regenerated automatically on the next build run, not needed in the repo.
 build/_work/
+
+# Working notes and the old internet-dependent reference file — kept locally,
+# not pushed to the public GitHub Pages repo.
+NOTES.md
+mushaf-hifz(4).html
