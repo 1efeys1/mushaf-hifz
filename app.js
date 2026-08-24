@@ -214,7 +214,6 @@
       '<div class="reader-scroll" id="readerScroll">' +
         '<div class="page-toolbar">' +
           '<span class="status-group">' +
-            '<span id="pageStatus" class="status"></span>' +
             '<button id="bookmarkToggle" class="bookmark-btn" type="button" title="Tandai halaman ini">☆</button>' +
           '</span>' +
           '<span id="surahStatus"></span>' +
@@ -340,17 +339,6 @@
   }
 
   function updateStatus(surahsOnPage){
-    var total = countPageWords(currentPage);
-    var revealedCount = Math.min(total, pageCursor[currentPage] || 0);
-    var ayahList = getPageWordAyahList(currentPage);
-    // "current ayah" = the ayah of the last word revealed so far, or the page's first
-    // ayah if nothing's been revealed yet.
-    var currentAyahLabel = "";
-    var ayahPair = revealedCount > 0 ? ayahList[revealedCount - 1] : ayahList[0];
-    if (ayahPair) currentAyahLabel = " — Ayat " + ayahPair[1];
-    document.getElementById("pageStatus").textContent =
-      "Halaman " + currentPage + " dari " + TOTAL_PAGES + currentAyahLabel +
-      " — " + revealedCount + "/" + total + " kata tampil";
     var names = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){ return SURAH_META[n - 1][1]; });
     document.getElementById("surahStatus").textContent = names.join(" · ");
     updateBookmarkToggle();
