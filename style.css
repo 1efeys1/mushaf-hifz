@@ -13,6 +13,7 @@
     --ayah-font:'Amiri Quran';
     --ayah-size:26px;
     --page-scale:1;
+    --page-zoom:1;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -110,15 +111,6 @@
     border-radius:6px;
     padding:5px 6px;
     font-size:12.5px;
-  }
-  .font-settings input[type="range"]{
-    width:90px;
-    accent-color:var(--gold-soft);
-  }
-  .font-settings .size-label{
-    width:34px;
-    display:inline-block;
-    color:#EFE6C9;
   }
 
   /* ---------- Layout ---------- */
@@ -277,7 +269,8 @@
   .reader-scroll{
     flex:1;
     min-height:0;
-    overflow-y:auto;
+    overflow:auto;
+    touch-action:pan-x pan-y;
     display:flex;
     flex-direction:column;
     align-items:center;
@@ -325,6 +318,8 @@
       inset 0 0 0 13px var(--paper);
     padding:46px 40px 54px;
     overflow:hidden;
+    transform:scale(var(--page-zoom));
+    transform-origin:center top;
   }
   .mushaf-page::before{
     content:"";
@@ -530,7 +525,7 @@
     #goPage .btn-label{ display:none; }
     #goPage::after{ content:"→"; }
 
-    /* font/size controls become a dropdown panel under the header, opened via ⚙ */
+    /* font controls become a dropdown panel under the header, opened via ⚙ */
     .font-settings{
       display:none;
       position:absolute;
@@ -545,7 +540,8 @@
     }
     .font-settings.open{ display:flex; }
     .font-settings label{ justify-content:space-between; }
-    .font-settings input[type="range"]{ flex:1; }
+
+    :root{ --ayah-size:18px; }
 
     .reader-scroll{ padding:12px 8px 20px; }
     .page-toolbar{ font-size:11px; margin-bottom:8px; }

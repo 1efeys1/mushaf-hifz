@@ -229,6 +229,7 @@
         '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
+    wirePinchZoom(readerScroll);
 
     document.getElementById("revealAll").addEventListener("click", function(){
       pageCursor[currentPage] = countPageWords(currentPage);
@@ -332,7 +333,10 @@
 
     updateStatus(surahsOnPage);
     fitLinesToWidth();
-    if (!skipScrollReset && readerScroll) readerScroll.scrollTop = 0;
+    if (!skipScrollReset){
+      resetPageZoom();
+      if (readerScroll) readerScroll.scrollTop = 0;
+    }
   }
 
   function updateStatus(surahsOnPage){
@@ -417,12 +421,49 @@
     document.documentElement.style.setProperty("--ayah-font", e.target.value);
     fitLinesToWidth();
   });
-  document.getElementById("fontSize").addEventListener("input", function(e){
-    document.documentElement.style.setProperty("--ayah-size", e.target.value + "px");
-    document.getElementById("fontSizeLabel").textContent = e.target.value + "px";
-    fitLinesToWidth();
-  });
   window.addEventListener("resize", function(){ fitLinesToWidth(); });
+
+  // ---------------- pinch-to-zoom (zooms the page image itself, not the text size) ----------------
+  var ZOOM_MIN = 1, ZOOM_MAX = 3;
+  var pageZoom = 1;
+  var pinchStartDist = null;
+  var pinchStartZoom = 1;
+
+  function setPageZoom(z){
+    pageZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
+    document.documentElement.style.setProperty("--page-zoom", pageZoom.toFixed(3));
+  }
+
+  function resetPageZoom(){ setPageZoom(1); }
+
+  function touchDistance(a, b){
+    var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  function wirePinchZoom(el){
+    el.addEventListener("touchstart", function(e){
+      if (e.touches.length === 2){
+        pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
+        pinchStartZoom = pageZoom;
+      }
+    }, { passive: true });
+    el.addEventListener("touchmove", function(e){
+      if (e.touches.length === 2 && pinchStartDist){
+        e.preventDefault();
+        setPageZoom(pinchStartZoom * (touchDistance(e.touches[0], e.touches[1]) / pinchStartDist));
+      }
+    }, { passive: false });
+    el.addEventListener("touchend", function(e){
+      if (e.touches.length < 2) pinchStartDist = null;
+    });
+    // trackpad pinch — Chrome/Firefox/Safari all report it as a wheel event with ctrlKey set
+    el.addEventListener("wheel", function(e){
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      setPageZoom(pageZoom - e.deltaY * 0.01);
+    }, { passive: false });
+  }
 
   // ---------------- keyboard: space to reveal next word, backspace to undo ----------------
   document.addEventListener("keydown", function(e){
@@ -462,12 +503,9 @@
       '</div>';
   }
 
-  // collapse sidebar by default on small screens
+  // collapse sidebar by default on small screens (--ayah-size for this width is set in CSS)
   if (window.innerWidth <= 760){
     shell.classList.add("collapsed");
-    document.getElementById("fontSize").value = 18;
-    document.getElementById("fontSizeLabel").textContent = "18px";
-    document.documentElement.style.setProperty("--ayah-size", "18px");
     fitLinesToWidth();
   }
 })();
