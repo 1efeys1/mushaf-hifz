@@ -2,3 +2,7 @@
 # Not needed for hosting; only build this on demand if you want to send one .html
 # file somewhere (e.g. over WhatsApp) instead of pointing people at the hosted URL.
 mushaf-hifz-offline.html
+
+# Downloaded/extracted upstream dataset cache used by build/build_data.py — large,
+# regenerated automatically on the next build run, not needed in the repo.
+build/_work/
