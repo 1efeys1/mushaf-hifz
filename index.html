@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Mushaf Hifz — Alat Bantu Hafalan Qur'an (Offline)</title>
+<!-- UI chrome fonts only (buttons/labels) — loaded from the web if available, harmless if
+     offline since the CSS below already falls back to system sans-serif/serif for these. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts.css">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="topbar">
+  <button class="chip" id="toggleSidebar" title="Daftar surah">☰ <span class="btn-label">Surah</span></button>
+  <div class="brand">
+    <span class="ar">مُصْحَفُ الْحِفْظ</span>
+    <span class="lat">Mushaf Hifz</span>
+  </div>
+  <button class="chip settings-toggle" id="settingsToggle" title="Pengaturan font">⚙</button>
+  <div class="font-settings" id="fontSettings">
+    <label>Font ayat:
+      <select id="fontSelect">
+        <option value="'Amiri Quran'">Amiri Quran</option>
+        <option value="'Scheherazade New'">Scheherazade New</option>
+        <option value="'Noto Naskh Arabic'">Noto Naskh Arabic</option>
+        <option value="'Lateef'">Lateef</option>
+      </select>
+    </label>
+    <label>Ukuran:
+      <input type="range" id="fontSize" min="18" max="42" step="1" value="26">
+      <span class="size-label" id="fontSizeLabel">26px</span>
+    </label>
+  </div>
+  <button class="chip" id="prevPage"><span class="btn-label">‹ Sebelumnya</span></button>
+  <div class="page-jump">
+    <span class="pj-label">Halaman</span>
+    <input type="number" id="pageInput" min="1" max="604" value="1">
+    <span class="pj-label">/ 604</span>
+    <button class="chip" id="goPage"><span class="btn-label">Pergi</span></button>
+  </div>
+  <button class="chip" id="nextPage"><span class="btn-label">Berikutnya ›</span></button>
+</header>
+
+<div class="shell" id="shell">
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-head">
+      <input type="text" id="surahSearch" placeholder="Cari surah… (nama, nomor)">
+    </div>
+    <div class="surah-list" id="surahList"></div>
+  </aside>
+
+  <main class="reader" id="reader">
+    <div class="center-screen" id="loadingScreen">
+      <div class="ar">جَارٍ التَحْمِيل…</div>
+    </div>
+  </main>
+</div>
+
+<script src="data.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
