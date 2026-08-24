@@ -300,6 +300,7 @@
         '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
+    mushafPageEl = document.getElementById("mushafPage");
     wirePinchZoom(readerScroll);
 
     document.getElementById("revealAll").addEventListener("click", function(){
@@ -490,10 +491,15 @@
   var pageZoom = 1;
   var pinchStartDist = null;
   var pinchStartZoom = 1;
+  var mushafPageEl = null; // set in buildReaderShell — same stable element every renderPage()
 
+  // applies the transform directly to the element instead of going through a CSS custom
+  // property on :root — a :root variable used in one element's `transform` can still make
+  // some browsers re-evaluate style more broadly on every update, which made rapid
+  // touchmove-driven zooming feel heavy; setting .style.transform is the direct/cheap path.
   function setPageZoom(z){
     pageZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
-    document.documentElement.style.setProperty("--page-zoom", pageZoom.toFixed(3));
+    if (mushafPageEl) mushafPageEl.style.transform = pageZoom === 1 ? "" : "scale(" + pageZoom.toFixed(3) + ")";
   }
 
   function resetPageZoom(){ setPageZoom(1); }
@@ -504,6 +510,23 @@
   }
 
   function wirePinchZoom(el){
+    // touch/wheel events can fire much faster than the screen can repaint — coalesce
+    // bursts into at most one style update per animation frame instead of applying every
+    // single event synchronously, which was making pinch/pan feel heavy.
+    var rafScheduled = false;
+    var latestZoom = null;
+    function flushZoom(){
+      rafScheduled = false;
+      setPageZoom(latestZoom);
+    }
+    function scheduleZoom(z){
+      latestZoom = z;
+      if (!rafScheduled){
+        rafScheduled = true;
+        requestAnimationFrame(flushZoom);
+      }
+    }
+
     el.addEventListener("touchstart", function(e){
       if (e.touches.length === 2){
         pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
@@ -513,7 +536,7 @@
     el.addEventListener("touchmove", function(e){
       if (e.touches.length === 2 && pinchStartDist){
         e.preventDefault();
-        setPageZoom(pinchStartZoom * (touchDistance(e.touches[0], e.touches[1]) / pinchStartDist));
+        scheduleZoom(pinchStartZoom * (touchDistance(e.touches[0], e.touches[1]) / pinchStartDist));
       }
     }, { passive: false });
     el.addEventListener("touchend", function(e){
@@ -523,7 +546,7 @@
     el.addEventListener("wheel", function(e){
       if (!e.ctrlKey) return;
       e.preventDefault();
-      setPageZoom(pageZoom - e.deltaY * 0.01);
+      scheduleZoom(pageZoom - e.deltaY * 0.01);
     }, { passive: false });
   }
 

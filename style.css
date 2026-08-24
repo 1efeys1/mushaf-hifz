@@ -13,7 +13,6 @@
     --ayah-font:'Amiri Quran';
     --ayah-size:26px;
     --page-scale:1;
-    --page-zoom:1;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -318,8 +317,8 @@
       inset 0 0 0 13px var(--paper);
     padding:46px 40px 54px;
     overflow:hidden;
-    transform:scale(var(--page-zoom));
-    transform-origin:center top;
+    transform-origin:top left;
+    will-change:transform;
   }
   .mushaf-page::before{
     content:"";
