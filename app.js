@@ -123,6 +123,89 @@
     });
   }
 
+  // ---------------- sidebar tabs (Surah / Markah) ----------------
+  document.getElementById("tabSurah").addEventListener("click", function(){ switchSidebarTab("surah"); });
+  document.getElementById("tabBookmarks").addEventListener("click", function(){ switchSidebarTab("bookmarks"); });
+
+  function switchSidebarTab(tab){
+    var isSurah = tab === "surah";
+    document.getElementById("tabSurah").classList.toggle("active", isSurah);
+    document.getElementById("tabBookmarks").classList.toggle("active", !isSurah);
+    document.getElementById("surahSearch").style.display = isSurah ? "" : "none";
+    document.getElementById("surahList").style.display = isSurah ? "" : "none";
+    document.getElementById("bookmarkList").style.display = isSurah ? "none" : "block";
+  }
+
+  // ---------------- bookmarks (saved to this device/browser only, via localStorage) ----------------
+  var BOOKMARKS_KEY = "mushafHifzBookmarks";
+
+  function loadBookmarks(){
+    try{
+      var arr = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || "[]");
+      return Array.isArray(arr) ? arr.filter(function(n){ return Number.isInteger(n) && n >= 1 && n <= TOTAL_PAGES; }) : [];
+    } catch(e){
+      return [];
+    }
+  }
+
+  function saveBookmarks(){
+    try{ localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks)); } catch(e){ /* storage unavailable (private mode/full) — bookmark just won't persist */ }
+  }
+
+  var bookmarks = loadBookmarks();
+
+  function isBookmarked(pageNo){ return bookmarks.indexOf(pageNo) !== -1; }
+
+  function toggleBookmark(pageNo){
+    var idx = bookmarks.indexOf(pageNo);
+    if (idx === -1) bookmarks.push(pageNo);
+    else bookmarks.splice(idx, 1);
+    bookmarks.sort(function(a, b){ return a - b; });
+    saveBookmarks();
+    updateBookmarkToggle();
+    renderBookmarkList();
+  }
+
+  function updateBookmarkToggle(){
+    var btn = document.getElementById("bookmarkToggle");
+    if (!btn) return;
+    var marked = isBookmarked(currentPage);
+    btn.textContent = marked ? "★" : "☆";
+    btn.classList.toggle("active", marked);
+    btn.title = marked ? "Hapus markah halaman ini" : "Tandai halaman ini";
+  }
+
+  function renderBookmarkList(){
+    var countEl = document.getElementById("bookmarkCount");
+    if (countEl) countEl.textContent = bookmarks.length ? bookmarks.length : "";
+    var container = document.getElementById("bookmarkList");
+    if (!container) return;
+    if (!bookmarks.length){
+      container.innerHTML = '<div class="bookmark-empty">Belum ada halaman ditandai.<br>Klik ☆ di pembaca untuk menandai.</div>';
+      return;
+    }
+    container.innerHTML = "";
+    bookmarks.forEach(function(pageNo){
+      var names = pageSurahNumbers(pageNo).map(function(n){ return SURAH_META[n - 1][1]; }).join(" · ");
+      var item = document.createElement("div");
+      item.className = "bookmark-item";
+      item.innerHTML =
+        '<div class="bm-page">' + pageNo + '</div>' +
+        '<div class="bm-info"><div class="bm-surah">' + names + '</div></div>' +
+        '<button class="bm-remove" type="button" title="Hapus markah">✕</button>';
+      item.addEventListener("click", function(e){
+        if (e.target.closest(".bm-remove")) return;
+        goToPage(pageNo);
+        if (window.innerWidth <= 760) shell.classList.add("collapsed");
+      });
+      item.querySelector(".bm-remove").addEventListener("click", function(e){
+        e.stopPropagation();
+        toggleBookmark(pageNo);
+      });
+      container.appendChild(item);
+    });
+  }
+
   // ---------------- reader shell ----------------
   var readerScroll = null; // the element that actually scrolls (set in buildReaderShell)
 
@@ -130,7 +213,10 @@
     reader.innerHTML =
       '<div class="reader-scroll" id="readerScroll">' +
         '<div class="page-toolbar">' +
-          '<span id="pageStatus" class="status"></span>' +
+          '<span class="status-group">' +
+            '<span id="pageStatus" class="status"></span>' +
+            '<button id="bookmarkToggle" class="bookmark-btn" type="button" title="Tandai halaman ini">☆</button>' +
+          '</span>' +
           '<span id="surahStatus"></span>' +
         '</div>' +
         '<div class="mushaf-page" id="mushafPage"></div>' +
@@ -155,6 +241,7 @@
     document.getElementById("spaceBtn").addEventListener("click", function(){ moveCursor(1); });
     document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });
     document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
+    document.getElementById("bookmarkToggle").addEventListener("click", function(){ toggleBookmark(currentPage); });
   }
 
   function moveCursor(delta){
@@ -262,6 +349,7 @@
       " — " + revealedCount + "/" + total + " kata tampil";
     var names = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){ return SURAH_META[n - 1][1]; });
     document.getElementById("surahStatus").textContent = names.join(" · ");
+    updateBookmarkToggle();
   }
 
   // ---------------- keep each mushaf line on one visual row ----------------
@@ -357,6 +445,7 @@
   // ---------------- boot ----------------
   function boot(){
     renderSidebar();
+    renderBookmarkList();
     buildReaderShell();
     renderPage(1);
   }
