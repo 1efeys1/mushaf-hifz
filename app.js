@@ -206,6 +206,78 @@
     });
   }
 
+  // ---------------- long-press a word/ayah to bookmark the page ----------------
+  var LONG_PRESS_MS = 500;
+  var LONG_PRESS_MOVE_TOLERANCE = 10; // px — cancel if the finger drifts (scrolling instead)
+  var suppressNextWordClick = false; // set once a long-press fires, so the trailing click doesn't also reveal the word
+  var bookmarkPopupEl = null;
+
+  function ensureBookmarkPopup(){
+    if (bookmarkPopupEl) return bookmarkPopupEl;
+    bookmarkPopupEl = document.createElement("div");
+    bookmarkPopupEl.className = "bookmark-popup";
+    var btn = document.createElement("button");
+    btn.type = "button";
+    bookmarkPopupEl.appendChild(btn);
+    document.body.appendChild(bookmarkPopupEl);
+    btn.addEventListener("click", function(){
+      toggleBookmark(currentPage);
+      hideBookmarkPopup();
+    });
+    document.addEventListener("pointerdown", function(e){
+      if (bookmarkPopupEl.classList.contains("open") && !bookmarkPopupEl.contains(e.target)) hideBookmarkPopup();
+    });
+    window.addEventListener("scroll", hideBookmarkPopup, true);
+    return bookmarkPopupEl;
+  }
+
+  function hideBookmarkPopup(){
+    if (bookmarkPopupEl) bookmarkPopupEl.classList.remove("open");
+  }
+
+  function showBookmarkPopup(x, y){
+    var popup = ensureBookmarkPopup();
+    var btn = popup.querySelector("button");
+    btn.textContent = isBookmarked(currentPage) ? "🔖 Hapus markah halaman ini" : "🔖 Tandai halaman ini";
+    popup.classList.add("open");
+    popup.style.left = "0px";
+    popup.style.top = "0px";
+    var rect = popup.getBoundingClientRect();
+    var left = Math.min(Math.max(8, x - rect.width / 2), window.innerWidth - rect.width - 8);
+    var top = Math.min(Math.max(8, y - rect.height - 14), window.innerHeight - rect.height - 8);
+    popup.style.left = left + "px";
+    popup.style.top = top + "px";
+  }
+
+  function wireLongPressBookmark(el){
+    var timer = null;
+    var startX = 0, startY = 0;
+
+    function cancel(){
+      clearTimeout(timer);
+      timer = null;
+    }
+
+    el.addEventListener("pointerdown", function(e){
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      startX = e.clientX;
+      startY = e.clientY;
+      cancel();
+      timer = setTimeout(function(){
+        timer = null;
+        suppressNextWordClick = true;
+        showBookmarkPopup(startX, startY);
+      }, LONG_PRESS_MS);
+    });
+    el.addEventListener("pointermove", function(e){
+      if (!timer) return;
+      if (Math.abs(e.clientX - startX) > LONG_PRESS_MOVE_TOLERANCE || Math.abs(e.clientY - startY) > LONG_PRESS_MOVE_TOLERANCE) cancel();
+    });
+    el.addEventListener("pointerup", cancel);
+    el.addEventListener("pointerleave", cancel);
+    el.addEventListener("pointercancel", cancel);
+  }
+
   // ---------------- reader shell ----------------
   var readerScroll = null; // the element that actually scrolls (set in buildReaderShell)
 
@@ -318,9 +390,11 @@
 
     container.querySelectorAll(".word").forEach(function(el){
       el.addEventListener("click", function(){
+        if (suppressNextWordClick){ suppressNextWordClick = false; return; }
         pageCursor[currentPage] = +el.dataset.idx + 1;
         renderPage(currentPage, true);
       });
+      wireLongPressBookmark(el);
     });
 
     document.getElementById("pageInput").value = pageNo;

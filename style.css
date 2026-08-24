@@ -395,6 +395,9 @@
     border-radius:5px;
     padding:1px 3px;
     display:inline-block;
+    -webkit-touch-callout:none;
+    -webkit-user-select:none;
+    user-select:none;
   }
   .word.revealed{
     filter:blur(0);
@@ -471,6 +474,31 @@
     font-size:14px;
     color:var(--ink-soft);
   }
+
+  /* ---------- long-press bookmark popup ---------- */
+  .bookmark-popup{
+    position:fixed;
+    z-index:50;
+    display:none;
+    background:#173626;
+    border:1px solid var(--gold-soft);
+    border-radius:10px;
+    box-shadow:0 10px 30px -8px #000000cc;
+    padding:4px;
+  }
+  .bookmark-popup.open{ display:block; }
+  .bookmark-popup button{
+    background:transparent;
+    border:none;
+    color:#EFE6C9;
+    padding:9px 14px;
+    font-size:13px;
+    font-family:'Work Sans',sans-serif;
+    white-space:nowrap;
+    cursor:pointer;
+    border-radius:7px;
+  }
+  .bookmark-popup button:hover{ background:#24463482; }
 
   /* ---------- Loading / error ---------- */
   .center-screen{
