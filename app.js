@@ -136,13 +136,17 @@
     document.getElementById("bookmarkList").style.display = isSurah ? "none" : "block";
   }
 
-  // ---------------- bookmarks (saved to this device/browser only, via localStorage) ----------------
+  // ---------------- bookmarks — per-ayah, saved to this device/browser only, via localStorage ----------------
   var BOOKMARKS_KEY = "mushafHifzBookmarks";
 
   function loadBookmarks(){
     try{
       var arr = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || "[]");
-      return Array.isArray(arr) ? arr.filter(function(n){ return Number.isInteger(n) && n >= 1 && n <= TOTAL_PAGES; }) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function(b){
+        return b && Number.isInteger(b.surah) && Number.isInteger(b.ayah) && Number.isInteger(b.page) &&
+          b.surah >= 1 && b.surah <= 114 && b.page >= 1 && b.page <= TOTAL_PAGES;
+      });
     } catch(e){
       return [];
     }
@@ -154,25 +158,38 @@
 
   var bookmarks = loadBookmarks();
 
-  function isBookmarked(pageNo){ return bookmarks.indexOf(pageNo) !== -1; }
+  function findBookmarkIndex(surah, ayah){
+    for (var i = 0; i < bookmarks.length; i++){
+      if (bookmarks[i].surah === surah && bookmarks[i].ayah === ayah) return i;
+    }
+    return -1;
+  }
 
-  function toggleBookmark(pageNo){
-    var idx = bookmarks.indexOf(pageNo);
-    if (idx === -1) bookmarks.push(pageNo);
+  function isBookmarked(surah, ayah){ return findBookmarkIndex(surah, ayah) !== -1; }
+
+  function toggleBookmark(surah, ayah, page){
+    var idx = findBookmarkIndex(surah, ayah);
+    if (idx === -1) bookmarks.push({ surah: surah, ayah: ayah, page: page });
     else bookmarks.splice(idx, 1);
-    bookmarks.sort(function(a, b){ return a - b; });
+    bookmarks.sort(function(a, b){ return a.surah - b.surah || a.ayah - b.ayah; });
     saveBookmarks();
-    updateBookmarkToggle();
     renderBookmarkList();
   }
 
-  function updateBookmarkToggle(){
-    var btn = document.getElementById("bookmarkToggle");
-    if (!btn) return;
-    var marked = isBookmarked(currentPage);
-    btn.textContent = marked ? "★" : "☆";
-    btn.classList.toggle("active", marked);
-    btn.title = marked ? "Hapus markah halaman ini" : "Tandai halaman ini";
+  // jump to a bookmarked ayah and reveal the page up through it (not hidden/blurred) —
+  // same linear reveal-cursor the rest of the app uses, just pre-positioned past this ayah.
+  function goToBookmark(bm){
+    goToPage(bm.page);
+    var ayahList = getPageWordAyahList(bm.page);
+    var lastIdx = -1;
+    for (var i = 0; i < ayahList.length; i++){
+      if (ayahList[i][0] === bm.surah && ayahList[i][1] === bm.ayah) lastIdx = i;
+    }
+    if (lastIdx !== -1){
+      pageCursor[bm.page] = lastIdx + 1;
+      renderPage(bm.page, true);
+    }
+    if (window.innerWidth <= 760) shell.classList.add("collapsed");
   }
 
   function renderBookmarkList(){
@@ -181,26 +198,28 @@
     var container = document.getElementById("bookmarkList");
     if (!container) return;
     if (!bookmarks.length){
-      container.innerHTML = '<div class="bookmark-empty">Belum ada halaman ditandai.<br>Klik ☆ di pembaca untuk menandai.</div>';
+      container.innerHTML = '<div class="bookmark-empty">Belum ada ayat ditandai.<br>Tahan sebuah kata untuk menandai ayatnya.</div>';
       return;
     }
     container.innerHTML = "";
-    bookmarks.forEach(function(pageNo){
-      var names = pageSurahNumbers(pageNo).map(function(n){ return SURAH_META[n - 1][1]; }).join(" · ");
+    bookmarks.forEach(function(bm){
+      var surahName = SURAH_META[bm.surah - 1][1];
       var item = document.createElement("div");
       item.className = "bookmark-item";
       item.innerHTML =
-        '<div class="bm-page">' + pageNo + '</div>' +
-        '<div class="bm-info"><div class="bm-surah">' + names + '</div></div>' +
+        '<div class="bm-ayah">' + bm.ayah + '</div>' +
+        '<div class="bm-info">' +
+          '<div class="bm-surah">' + surahName + '</div>' +
+          '<div class="bm-meta">Ayat ' + bm.ayah + ' · Halaman ' + bm.page + '</div>' +
+        '</div>' +
         '<button class="bm-remove" type="button" title="Hapus markah">✕</button>';
       item.addEventListener("click", function(e){
         if (e.target.closest(".bm-remove")) return;
-        goToPage(pageNo);
-        if (window.innerWidth <= 760) shell.classList.add("collapsed");
+        goToBookmark(bm);
       });
       item.querySelector(".bm-remove").addEventListener("click", function(e){
         e.stopPropagation();
-        toggleBookmark(pageNo);
+        toggleBookmark(bm.surah, bm.ayah, bm.page);
       });
       container.appendChild(item);
     });
@@ -221,7 +240,8 @@
     bookmarkPopupEl.appendChild(btn);
     document.body.appendChild(bookmarkPopupEl);
     btn.addEventListener("click", function(){
-      toggleBookmark(currentPage);
+      var target = bookmarkPopupEl.__target;
+      if (target) toggleBookmark(target.surah, target.ayah, currentPage);
       hideBookmarkPopup();
     });
     document.addEventListener("pointerdown", function(e){
@@ -235,10 +255,11 @@
     if (bookmarkPopupEl) bookmarkPopupEl.classList.remove("open");
   }
 
-  function showBookmarkPopup(x, y){
+  function showBookmarkPopup(x, y, surah, ayah){
     var popup = ensureBookmarkPopup();
+    popup.__target = { surah: surah, ayah: ayah };
     var btn = popup.querySelector("button");
-    btn.textContent = isBookmarked(currentPage) ? "🔖 Hapus markah halaman ini" : "🔖 Tandai halaman ini";
+    btn.textContent = isBookmarked(surah, ayah) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
     popup.classList.add("open");
     popup.style.left = "0px";
     popup.style.top = "0px";
@@ -266,7 +287,8 @@
       timer = setTimeout(function(){
         timer = null;
         suppressNextWordClick = true;
-        showBookmarkPopup(startX, startY);
+        var ayahPair = getPageWordAyahList(currentPage)[+el.dataset.idx];
+        if (ayahPair) showBookmarkPopup(startX, startY, ayahPair[0], ayahPair[1]);
       }, LONG_PRESS_MS);
     });
     el.addEventListener("pointermove", function(e){
@@ -285,9 +307,6 @@
     reader.innerHTML =
       '<div class="reader-scroll" id="readerScroll">' +
         '<div class="page-toolbar">' +
-          '<span class="status-group">' +
-            '<button id="bookmarkToggle" class="bookmark-btn" type="button" title="Tandai halaman ini">☆</button>' +
-          '</span>' +
           '<span id="surahStatus"></span>' +
         '</div>' +
         '<div class="mushaf-page" id="mushafPage"></div>' +
@@ -314,7 +333,6 @@
     document.getElementById("spaceBtn").addEventListener("click", function(){ moveCursor(1); });
     document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });
     document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
-    document.getElementById("bookmarkToggle").addEventListener("click", function(){ toggleBookmark(currentPage); });
   }
 
   function moveCursor(delta){
@@ -416,7 +434,6 @@
   function updateStatus(surahsOnPage){
     var names = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){ return SURAH_META[n - 1][1]; });
     document.getElementById("surahStatus").textContent = names.join(" · ");
-    updateBookmarkToggle();
   }
 
   // ---------------- keep each mushaf line on one visual row ----------------

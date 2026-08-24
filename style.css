@@ -202,7 +202,7 @@
     border-left:3px solid transparent;
   }
   .bookmark-item:hover{ background:#16301f; }
-  .bm-page{
+  .bm-ayah{
     width:26px; height:26px;
     border:1px solid var(--gold-soft);
     border-radius:50%;
@@ -211,11 +211,17 @@
   }
   .bm-info{ flex:1; min-width:0; }
   .bm-surah{
-    font-size:12.5px;
-    color:#E8E0C0;
+    font-size:13px;
+    color:#F1E9C8;
+    font-family:'Amiri Quran',serif;
     white-space:nowrap;
     overflow:hidden;
     text-overflow:ellipsis;
+  }
+  .bm-meta{
+    font-size:11px;
+    color:#9fae97;
+    margin-top:2px;
   }
   .bm-remove{
     background:transparent;
@@ -279,25 +285,11 @@
     width:100%;
     max-width:760px;
     display:flex;
-    justify-content:space-between;
     align-items:center;
     margin-bottom:16px;
     color:#cbd8c2;
     font-size:13px;
   }
-  .page-toolbar .status{ color:#8ea184; }
-  .status-group{ display:flex; align-items:center; gap:6px; }
-  .bookmark-btn{
-    background:transparent;
-    border:none;
-    color:#8ea184;
-    font-size:16px;
-    line-height:1;
-    padding:0;
-    cursor:pointer;
-  }
-  .bookmark-btn:hover{ color:var(--gold-soft); }
-  .bookmark-btn.active{ color:var(--gold-soft); }
 
   .mushaf-page{
     position:relative;
