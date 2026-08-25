@@ -1,8 +1,8 @@
 # Mushaf Hifz
 
-Alat bantu hafalan Qur'an berbasis web, offline — layout 15-baris ala Mushaf
-Madinah, tampilan per-kata yang bisa disembunyikan/ditampilkan (reveal
-cursor) buat latihan hafalan, dan bookmark per-device.
+Alat bantu hafalan Qur'an berbasis web — layout 15-baris ala Mushaf Madinah,
+tampilan per-kata yang bisa disembunyikan/ditampilkan (reveal cursor) buat
+latihan hafalan, dan bookmark per-ayat per-device.
 
 **Live**: https://1efeys1.github.io/mushaf-hifz/
 
@@ -23,25 +23,38 @@ bun dev
 Lalu buka `http://localhost:8000` di browser. Ganti port kalau perlu:
 `bun dev 3000`. `bun start` juga jalan, sama persis.
 
+Butuh internet — teks & layout Qur'an di-fetch dari api.quran.com per
+halaman saat diakses (lihat "Sumber data" di bawah), bukan dibundel di
+repo.
+
 ## Struktur file
 
 - `index.html` / `style.css` / `app.js` — shell, styling, logic. Kecil,
   sering diedit.
 - `fonts.css` — 4 font Arab Qur'an di-embed sebagai base64 (`@font-face`),
   ~375KB, jarang berubah.
-- `data.js` — seluruh teks Qur'an + layout per-halaman + metadata surah +
-  daftar ayat sajda, ~1.5MB, jarang berubah. Semua dimuat lewat
-  `<script src="...">` biasa, gak ada `fetch()` saat runtime — situsnya
-  bener-bener offline setelah halaman pertama kali kebuka.
+- `surah-meta.js` — metadata statis per surah (nama, jumlah ayat,
+  halaman pertama, ada-tidaknya Basmalah) — kecil (~10KB), jarang berubah.
+- `quran-api.js` — fetch halaman dari api.quran.com + cache di
+  `localStorage` (maks 7 hari, sesuai ketentuan provider).
+- `page-layout.js` — transformasi murni: data mentah API → struktur baris
+  yang di-render `app.js` (deteksi header surah, Basmalah, akhir ayat,
+  sajda).
 - `package.json` / `build/serve.js` — `bun dev`/`bun start` buat testing
   lokal (lihat di atas).
-- `build/build_data.py` — regenerasi `data.js` dari dataset upstream
-  (butuh internet, `python build/build_data.py`).
-- `build/build_single_file.py` — gabungin 5 file di atas jadi satu
-  `mushaf-hifz-offline.html` (buat dikirim manual, misal lewat WhatsApp).
-- `mushaf-hifz(4).html` — versi paling awal, butuh internet tiap buka
-  (`api.alquran.cloud`). Disimpan cuma buat referensi historis, gitignored
-  dari repo publik.
+- `build/build_surah_meta.py` — regenerasi `surah-meta.js` (butuh internet,
+  `python build/build_surah_meta.py`).
+- `mushaf-hifz(4).html` — versi paling awal (prototype), disimpan cuma buat
+  referensi historis, gitignored dari repo publik.
+
+## Sumber data
+
+Teks & layout per-halaman/baris di-fetch live dari
+`api.quran.com/api/v4/verses/by_page/<N>` dengan parameter `mushaf=2` —
+itu edisi Mushaf Madinah **15-baris** yang jadi target app ini (API-nya
+defaultnya 16-baris kalau parameter itu gak disertakan). Metadata surah
+(nama, halaman pertama, dsb) di `surah-meta.js` datang dari
+`api.alquran.cloud/v1/meta` + `api.quran.com/api/v4/chapters`.
 
 Detail teknis lebih lengkap (keputusan desain, bug yang udah difix, status
 verifikasi) ada di `NOTES.md` — file itu sengaja gitignored, jadi cuma ada

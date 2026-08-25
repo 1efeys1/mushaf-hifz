@@ -431,6 +431,36 @@
     font-size:14px;
   }
 
+  .page-loading{
+    min-height:60vh;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    text-align:center;
+    color:var(--ink-soft);
+    padding:40px;
+  }
+  .page-loading .ar{
+    font-family:'Amiri Quran',serif;
+    font-size:20px;
+    color:var(--gold);
+  }
+  .page-loading span{ font-size:13px; }
+  .page-loading button{
+    margin-top:6px;
+    background:transparent;
+    border:1px solid var(--gold);
+    color:var(--green-deep);
+    padding:8px 16px;
+    border-radius:999px;
+    font-size:13px;
+    font-family:'Work Sans',sans-serif;
+    cursor:pointer;
+  }
+  .page-loading button:hover{ background:var(--veil); }
+
   /* fixed footer bar — always visible, never scrolls away with the page */
   .reveal-controls{
     flex-shrink:0;

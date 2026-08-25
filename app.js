@@ -20,25 +20,33 @@
   var reader = document.getElementById("reader");
   var shell = document.getElementById("shell");
 
-  // ---------------- derived lookup tables (built once from the bundled data) ----------------
-  var SAJDA_SET = Object.create(null);
-  SAJDA_AYAHS.forEach(function(p){ SAJDA_SET[p[0] + ":" + p[1]] = true; });
+  // ---------------- live page data: fetched from api.quran.com per page, cached ----------------
+  // pageNo -> line array (see page-layout.js), populated once a page finishes loading. Every
+  // helper below reads from here instead of a bundled global — the whole mushaf isn't in memory
+  // at once, only pages actually visited.
+  var pageLinesCache = Object.create(null);
+  var pageLoadPromises = Object.create(null); // pageNo -> in-flight promise, dedupes concurrent loads
 
-  var SURAH_FIRST_PAGE = Object.create(null);
-  for (var p = 1; p <= TOTAL_PAGES; p++){
-    var linesOnPage = MUSHAF_PAGES[p - 1] || [];
-    for (var i = 0; i < linesOnPage.length; i++){
-      if (linesOnPage[i][0] === "h"){
-        var sn = linesOnPage[i][1];
-        if (SURAH_FIRST_PAGE[sn] === undefined) SURAH_FIRST_PAGE[sn] = p;
-      }
-    }
+  function loadPageLines(pageNo){
+    if (pageLinesCache[pageNo]) return Promise.resolve(pageLinesCache[pageNo]);
+    if (pageLoadPromises[pageNo]) return pageLoadPromises[pageNo];
+    var promise = QuranApi.loadRawPage(pageNo).then(function(verses){
+      var lines = PageLayout.buildPageLines(pageNo, verses, SURAH_META);
+      pageLinesCache[pageNo] = lines;
+      delete pageLoadPromises[pageNo];
+      return lines;
+    }).catch(function(err){
+      delete pageLoadPromises[pageNo];
+      throw err;
+    });
+    pageLoadPromises[pageNo] = promise;
+    return promise;
   }
 
   // ---------------- page helpers ----------------
   function countPageWords(pageNo){
     if (pageWordCountCache[pageNo] !== undefined) return pageWordCountCache[pageNo];
-    var linesOnPage = MUSHAF_PAGES[pageNo - 1] || [];
+    var linesOnPage = pageLinesCache[pageNo] || [];
     var total = 0;
     linesOnPage.forEach(function(line){
       if (line[0] === "t"){
@@ -54,7 +62,7 @@
   // "1 ayat" button know where the current ayah ends.
   function getPageWordAyahList(pageNo){
     if (pageWordAyahCache[pageNo]) return pageWordAyahCache[pageNo];
-    var linesOnPage = MUSHAF_PAGES[pageNo - 1] || [];
+    var linesOnPage = pageLinesCache[pageNo] || [];
     var list = [];
     linesOnPage.forEach(function(line){
       if (line[0] === "t"){
@@ -69,7 +77,7 @@
   }
 
   function pageSurahNumbers(pageNo){
-    var linesOnPage = MUSHAF_PAGES[pageNo - 1] || [];
+    var linesOnPage = pageLinesCache[pageNo] || [];
     var nums = [];
     linesOnPage.forEach(function(line){
       if (line[0] === "h"){
@@ -88,7 +96,7 @@
     var container = document.getElementById("surahList");
     container.innerHTML = "";
     SURAH_META.forEach(function(s){
-      var number = s[0], nameAr = s[1], nameEn = s[2], nameTranslation = s[3], isMeccan = s[4], ayahCount = s[5];
+      var number = s[0], nameAr = s[1], nameEn = s[2], nameTranslation = s[3], isMeccan = s[4], ayahCount = s[5], firstPage = s[6];
       var item = document.createElement("div");
       item.className = "surah-item";
       item.dataset.number = number;
@@ -103,7 +111,7 @@
           '</div>' +
         '</div>';
       item.addEventListener("click", function(){
-        goToPage(SURAH_FIRST_PAGE[number]);
+        goToPage(firstPage);
         if (window.innerWidth <= 760) shell.classList.add("collapsed");
       });
       container.appendChild(item);
@@ -180,15 +188,18 @@
   // same linear reveal-cursor the rest of the app uses, just pre-positioned past this ayah.
   function goToBookmark(bm){
     goToPage(bm.page);
-    var ayahList = getPageWordAyahList(bm.page);
-    var lastIdx = -1;
-    for (var i = 0; i < ayahList.length; i++){
-      if (ayahList[i][0] === bm.surah && ayahList[i][1] === bm.ayah) lastIdx = i;
-    }
-    if (lastIdx !== -1){
-      pageCursor[bm.page] = lastIdx + 1;
-      renderPage(bm.page, true);
-    }
+    loadPageLines(bm.page).then(function(){
+      if (currentPage !== bm.page) return; // user navigated elsewhere before this resolved
+      var ayahList = getPageWordAyahList(bm.page);
+      var lastIdx = -1;
+      for (var i = 0; i < ayahList.length; i++){
+        if (ayahList[i][0] === bm.surah && ayahList[i][1] === bm.ayah) lastIdx = i;
+      }
+      if (lastIdx !== -1){
+        pageCursor[bm.page] = lastIdx + 1;
+        renderPage(bm.page, true);
+      }
+    });
     if (window.innerWidth <= 760) shell.classList.add("collapsed");
   }
 
@@ -360,10 +371,38 @@
   }
 
   // ---------------- page rendering ----------------
+  // Entry point — synchronous fast path if the page is already loaded (e.g. re-rendering the
+  // same page after a reveal-cursor change), otherwise shows a loading state and renders once
+  // the fetch (or cache read) resolves. currentPage is set immediately either way, so a stale
+  // response for a page the user has since navigated away from is detected and dropped.
   function renderPage(pageNo, skipScrollReset){
     if (pageNo < 1 || pageNo > TOTAL_PAGES) return;
     currentPage = pageNo;
-    var linesOnPage = MUSHAF_PAGES[pageNo - 1] || [];
+
+    var cached = pageLinesCache[pageNo];
+    if (cached){
+      renderPageContent(pageNo, cached, skipScrollReset);
+      return;
+    }
+
+    document.getElementById("mushafPage").innerHTML =
+      '<div class="page-loading"><div class="ar">جَارٍ التَحْمِيل…</div><span>Memuat halaman…</span></div>';
+    loadPageLines(pageNo).then(function(lines){
+      if (currentPage !== pageNo) return;
+      renderPageContent(pageNo, lines, skipScrollReset);
+    }).catch(function(err){
+      console.error(err);
+      if (currentPage !== pageNo) return;
+      document.getElementById("mushafPage").innerHTML =
+        '<div class="page-loading">' +
+          '<div>Gagal memuat halaman. Cek koneksi internet.</div>' +
+          '<button id="retryPageLoad" type="button">Coba lagi</button>' +
+        '</div>';
+      document.getElementById("retryPageLoad").addEventListener("click", function(){ renderPage(pageNo, true); });
+    });
+  }
+
+  function renderPageContent(pageNo, linesOnPage, skipScrollReset){
     var container = document.getElementById("mushafPage");
     var cursor = pageCursor[pageNo] || 0;
     var wordIndex = 0;
@@ -385,13 +424,10 @@
       } else { // "t" — a real mushaf line
         html += '<div class="mushaf-line">';
         line[1].forEach(function(run){
-          var surah = run[0], ayah = run[1], startWord = run[2], text = run[3];
+          var surah = run[0], ayah = run[1], startWord = run[2], text = run[3], endsAyah = run[4], isSajdaAyah = run[5];
           var words = text.split(" ");
-          var ayahTotalWords = AYAH_LEN[surah - 1][ayah - 1];
-          var isSajdaAyah = !!SAJDA_SET[surah + ":" + ayah];
           for (var wi = 0; wi < words.length; wi++){
-            var wordInAyah = startWord + wi;
-            var isLastOfAyah = wordInAyah === ayahTotalWords;
+            var isLastOfAyah = endsAyah && wi === words.length - 1;
             var revealed = wordIndex < cursor;
             html += '<span class="word' + (revealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">' +
                       words[wi] +
@@ -611,8 +647,7 @@
     reader.innerHTML =
       '<div class="center-screen">' +
         '<div class="ar">تَعَذَّرَ التَحْمِيل</div>' +
-        '<div>Data mushaf di dalam file ini tampaknya rusak atau tidak lengkap ' +
-        '(mungkin file terpotong saat dikirim/diunduh). Coba minta ulang file HTML-nya.</div>' +
+        '<div>Gagal memuat aplikasi. Coba muat ulang halaman ini.</div>' +
       '</div>';
   }
 

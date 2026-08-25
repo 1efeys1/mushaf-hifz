@@ -1,13 +1,4 @@
-# Regenerable single-file build (merges index.html+style.css+fonts.css+data.js+app.js).
-# Not needed for hosting; only build this on demand if you want to send one .html
-# file somewhere (e.g. over WhatsApp) instead of pointing people at the hosted URL.
-mushaf-hifz-offline.html
-
-# Downloaded/extracted upstream dataset cache used by build/build_data.py — large,
-# regenerated automatically on the next build run, not needed in the repo.
-build/_work/
-
-# Working notes and the old internet-dependent reference file — kept locally,
+# Working notes and the old prototype reference file — kept locally,
 # not pushed to the public GitHub Pages repo.
 NOTES.md
 mushaf-hifz(4).html
