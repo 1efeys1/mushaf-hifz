@@ -1,6 +1,6 @@
 # Mushaf Hifz
 
-Alat bantu hafalan Qur'an berbasis web — layout 15-baris ala Mushaf Madinah,
+Alat bantu hafalan Qur'an berbasis web — layout 16-baris ala Mushaf Madinah,
 tampilan per-kata yang bisa disembunyikan/ditampilkan (reveal cursor) buat
 latihan hafalan, dan bookmark per-ayat per-device.
 
@@ -50,11 +50,13 @@ repo.
 ## Sumber data
 
 Teks & layout per-halaman/baris di-fetch live dari
-`api.quran.com/api/v4/verses/by_page/<N>` dengan parameter `mushaf=2` —
-itu edisi Mushaf Madinah **15-baris** yang jadi target app ini (API-nya
-defaultnya 16-baris kalau parameter itu gak disertakan). Metadata surah
-(nama, halaman pertama, dsb) di `surah-meta.js` datang dari
-`api.alquran.cloud/v1/meta` + `api.quran.com/api/v4/chapters`.
+`api.quran.com/api/v4/verses/by_page/<N>` — edisi Mushaf Madinah
+**16-baris** yang jadi target app ini. Field `code_v2` di `word_fields`
+itu yang nentuin edisi mana yang balik (bukan parameter `mushaf` seperti
+dugaan awal — lihat `NOTES.md` buat detail lengkapnya), nilainya sendiri
+gak dipakai buat render. Metadata surah (nama, halaman pertama, dsb) di
+`surah-meta.js` datang dari `api.alquran.cloud/v1/meta` +
+`api.quran.com/api/v4/chapters`.
 
 Detail teknis lebih lengkap (keputusan desain, bug yang udah difix, status
 verifikasi) ada di `NOTES.md` — file itu sengaja gitignored, jadi cuma ada

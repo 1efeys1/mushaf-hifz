@@ -1,15 +1,24 @@
-// Fetches a mushaf page's word/ayah data from api.quran.com (mushaf=2 — the 15-line Madani
-// edition this app targets; the API defaults to a different 16-line edition without it, see
-// NOTES.md) and caches it in localStorage. Pure network+cache concern — turning the response
-// into what the reader actually renders happens in page-layout.js.
+// Fetches a mushaf page's word/ayah data from api.quran.com and caches it in localStorage.
+// Pure network+cache concern — turning the response into what the reader actually renders
+// happens in page-layout.js.
+//
+// Requests the 16-line Madani edition (this app's target — see NOTES.md for the 15-line/
+// 16-line distinction). Quirk confirmed by direct testing, not documented anywhere: which
+// edition's line_number values come back has nothing to do with the `mushaf` query param —
+// it flips on whether `code_v2` is in word_fields. Its value is never used (this app renders
+// text_uthmani with its own embedded fonts, not QPC glyph fonts), it's requested purely as
+// the edition switch; removing it silently reverts to the 15-line edition.
 (function(window){
   "use strict";
 
-  var CACHE_PREFIX = "mushafHifzPageCache:";
+  // Bump this if the requested edition/fields ever change again — old cache entries under a
+  // different prefix are simply ignored (and age out via each browser's own storage limits),
+  // instead of serving whatever edition happened to be cached under the same key before.
+  var CACHE_PREFIX = "mushafHifzPageCache:v2:";
   // The API provider's terms cap how long responses may be cached — 7 days.
   var CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var API_BASE = "https://api.quran.com/api/v4/verses/by_page/";
-  var WORD_FIELDS = "text_uthmani,line_number,position";
+  var WORD_FIELDS = "text_uthmani,line_number,position,code_v2";
   var VERSE_FIELDS = "verse_key,sajdah_number";
 
   function readCache(pageNo){
