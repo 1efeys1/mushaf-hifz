@@ -92,7 +92,12 @@
   // Block format:
   //   surah header: ["h", surahNumber, arabicTitle]
   //   Basmalah:     ["b"]
-  //   ayah block:   ["ayah", surah, ayah, isSajda, [[word, wordTranslation], ...], ayahTranslation]
+  //   ayah block:   ["ayah", surah, ayah, isSajda, [[word, wordTranslation], ...], ayahTranslation, startWord]
+  //     — startWord is the first page-word's 1-indexed position *within its ayah* (from the
+  //       API, same field mushaf-mode runs use as their own startWord). Needed by app.js's hint
+  //       words: an ayah split across a page boundary only has its tail words here, so "first N
+  //       words of the ayah" has to be computed from this, not from the word's index in this
+  //       page's own (possibly-partial) word list.
   function buildAyahBlocks(pageNo, verses, surahMeta){
     var blocks = [];
     var lastSurah = null;
@@ -116,7 +121,7 @@
       });
       var ayahTranslation = (v.translations && v.translations[0]) ? v.translations[0].text : "";
       var isSajda = v.sajdah_number != null;
-      blocks.push(["ayah", surah, ayah, isSajda, words, ayahTranslation]);
+      blocks.push(["ayah", surah, ayah, isSajda, words, ayahTranslation, wordsOnPage[0].position]);
     });
 
     return blocks;

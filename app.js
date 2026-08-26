@@ -48,7 +48,7 @@
   function setHintWordCount(n){
     hintWordCount = Math.max(0, Math.min(HINT_WORDS_MAX, n));
     try{ localStorage.setItem(HINT_WORDS_KEY, String(hintWordCount)); } catch(e){ /* storage unavailable — just won't persist */ }
-    if (pageLinesCache[currentPage]) renderPageContent(currentPage, pageLinesCache[currentPage], true);
+    renderPage(currentPage, true); // mode-aware — hint words apply in both mushaf and ayah view
   }
 
   // ---------------- view mode: "mushaf" (printed page, reveal-to-memorize) vs "ayah" (per-ayah
@@ -154,36 +154,40 @@
   }
 
   // ---------------- page helpers ----------------
-  function countPageWords(pageNo){
-    if (pageWordCountCache[pageNo] !== undefined) return pageWordCountCache[pageNo];
-    var linesOnPage = pageLinesCache[pageNo] || [];
-    var total = 0;
-    linesOnPage.forEach(function(line){
-      if (line[0] === "t"){
-        line[1].forEach(function(run){ total += run[3].split(" ").length; });
-      }
-    });
-    pageWordCountCache[pageNo] = total;
-    return total;
-  }
-
-  // which [surah,ayah] each word on the page belongs to, in the same reading order
-  // the reveal cursor counts through — used to show "sedang di ayat N" and to let the
-  // "1 ayat" button know where the current ayah ends.
+  // Both the mushaf-mode and ayah-mode fetches return the same underlying words for a given
+  // page in the same reading order (translations/word_fields are additive — they don't change
+  // which verses/words come back or their order), so one reveal cursor works across both view
+  // modes and this can source its word list from whichever of the two page caches happens to
+  // already be loaded, preferring pageLinesCache since it was the original.
   function getPageWordAyahList(pageNo){
     if (pageWordAyahCache[pageNo]) return pageWordAyahCache[pageNo];
-    var linesOnPage = pageLinesCache[pageNo] || [];
     var list = [];
-    linesOnPage.forEach(function(line){
-      if (line[0] === "t"){
-        line[1].forEach(function(run){
-          var surah = run[0], ayah = run[1], count = run[3].split(" ").length;
-          for (var i = 0; i < count; i++) list.push([surah, ayah]);
-        });
-      }
-    });
+    if (pageLinesCache[pageNo]){
+      pageLinesCache[pageNo].forEach(function(line){
+        if (line[0] === "t"){
+          line[1].forEach(function(run){
+            var surah = run[0], ayah = run[1], count = run[3].split(" ").length;
+            for (var i = 0; i < count; i++) list.push([surah, ayah]);
+          });
+        }
+      });
+    } else if (pageAyahBlocksCache[pageNo]){
+      pageAyahBlocksCache[pageNo].forEach(function(block){
+        if (block[0] !== "ayah") return;
+        for (var i = 0; i < block[4].length; i++) list.push([block[1], block[2]]);
+      });
+    } else {
+      return []; // neither loaded yet — caller should retry after its load resolves
+    }
     pageWordAyahCache[pageNo] = list;
     return list;
+  }
+
+  function countPageWords(pageNo){
+    if (pageWordCountCache[pageNo] !== undefined) return pageWordCountCache[pageNo];
+    var total = getPageWordAyahList(pageNo).length;
+    if (total) pageWordCountCache[pageNo] = total; // don't cache 0 from a not-yet-loaded page
+    return total;
   }
 
   function pageSurahNumbers(pageNo){
@@ -500,7 +504,6 @@
   }
 
   function moveCursor(delta){
-    if (viewMode === "ayah") return; // no reveal cursor in the ayah/translation view
     var total = countPageWords(currentPage);
     var cur = pageCursor[currentPage] || 0;
     var next = cur + delta;
@@ -707,11 +710,15 @@
   }
 
   // "ayah" view mode — word-by-word + full-ayah Indonesian translation, continuous reading
-  // order (no mushaf line_number layout, no reveal cursor: showing translations alongside
-  // hidden Arabic would defeat the point of hiding words for memorization testing, so this
-  // mode is a pure study/reading view — every word is always visible).
+  // order (no mushaf line_number layout). The same reveal cursor/hint words from mushaf mode
+  // still hide/reveal the Arabic here (word-for-word, same page-wide index — both fetches
+  // return words in the same order, see getPageWordAyahList) so memorization testing still
+  // works; the translations stay visible throughout as a study aid rather than also hiding,
+  // which is the whole point of this view. Only pinch-zoom stays mushaf-only (see setViewMode).
   function renderAyahPageContent(pageNo, blocks, skipScrollReset){
     var container = document.getElementById("mushafPage");
+    var cursor = pageCursor[pageNo] || 0;
+    var wordIndex = 0;
     var html = '<div class="ayah-flow">';
     var surahsOnPage = [];
 
@@ -732,16 +739,21 @@
       } else if (block[0] === "b"){
         html += '<div class="basmalah">' + BASMALAH + '</div>';
       } else { // "ayah"
-        var surah = block[1], ayah = block[2], isSajdaAyah = block[3], words = block[4], ayahTranslation = block[5];
+        var surah = block[1], ayah = block[2], isSajdaAyah = block[3], words = block[4], ayahTranslation = block[5], startWord = block[6];
         noteSurah(surah);
         html += '<div class="ayah-block" data-surah="' + surah + '" data-ayah="' + ayah + '"><div class="ayah-words">';
-        words.forEach(function(pair){
-          html += '<div class="ayah-word"><span class="aw-ar">' + pair[0] + '</span>' +
+        words.forEach(function(pair, wi){
+          var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
+          var revealed = wordIndex < cursor || isHintWord;
+          html += '<div class="ayah-word">' +
+            '<span class="word aw-ar' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + pair[0] + '</span>' +
             (pair[1] ? '<span class="aw-gloss">' + pair[1] + '</span>' : "") +
           '</div>';
+          wordIndex++;
         });
-        html += '<span class="num revealed">' + toArabicDigits(ayah) + '</span>' +
-          (isSajdaAyah ? '<span class="sajda-tag revealed">سجدة</span>' : "") +
+        var numRevealed = wordIndex - 1 < cursor || hintWordCount > 0;
+        html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">' + toArabicDigits(ayah) + '</span>' +
+          (isSajdaAyah ? '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">سجدة</span>' : "") +
         '</div>' +
         (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation + '</div>' : "") +
         '</div>';
@@ -751,6 +763,13 @@
     html += '</div><div class="page-number">— ' + toArabicDigits(pageNo) + ' —</div>';
     container.innerHTML = html;
 
+    container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+      el.addEventListener("click", function(){
+        if (suppressNextWordClick){ suppressNextWordClick = false; return; }
+        pageCursor[currentPage] = +el.dataset.idx + 1;
+        renderPage(currentPage, true);
+      });
+    });
     container.querySelectorAll(".ayah-block").forEach(function(block){
       var ayahPair = [+block.dataset.surah, +block.dataset.ayah];
       block.querySelectorAll(".ayah-word").forEach(function(wordEl){
@@ -918,9 +937,7 @@
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input") return;
 
-    if (viewMode === "ayah"){
-      // no reveal cursor to move — let Space/Backspace do their normal browser thing
-    } else if (e.code === "Space"){
+    if (e.code === "Space"){
       e.preventDefault();
       moveCursor(1);
     } else if (e.key === "Backspace"){

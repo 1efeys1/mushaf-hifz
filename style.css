@@ -343,15 +343,11 @@
   .font-size-control button:hover{ background:#1a3527; }
   #fontSizeLabel{ min-width:3em; text-align:center; }
 
-  body.ayah-mode .hint-control{ display:none; }
+  /* hint words, the font-size slider, and the reveal/hide/step buttons all still apply in the
+     ayah view — same reveal cursor hides/reveals the Arabic words there too (see
+     renderAyahPageContent in app.js), translations just stay visible throughout as a
+     memorization aid. Only the mode-appropriate controls differ: */
   body.ayah-mode .font-size-control{ display:flex; }
-  /* the reveal/hide/step buttons only make sense with a reveal cursor, which the ayah view
-     doesn't have (see the comment on renderAyahPageContent in app.js) — page navigation stays. */
-  body.ayah-mode #revealAll,
-  body.ayah-mode #ayahBtn,
-  body.ayah-mode #spaceBtn,
-  body.ayah-mode #backspaceBtn,
-  body.ayah-mode #hideAll{ display:none; }
 
   .mushaf-page{
     position:relative;
