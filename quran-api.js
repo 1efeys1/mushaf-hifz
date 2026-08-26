@@ -20,6 +20,7 @@
   var API_BASE = "https://api.quran.com/api/v4/verses/by_page/";
   var WORD_FIELDS = "text_uthmani,line_number,position,code_v2";
   var VERSE_FIELDS = "verse_key,sajdah_number";
+  var TOTAL_PAGES = 604;
 
   function readCache(pageNo){
     try{
@@ -43,7 +44,7 @@
     } catch(e){ /* storage full/unavailable — page still renders, just won't be cached */ }
   }
 
-  function fetchPage(pageNo){
+  function fetchRawVerses(pageNo){
     var url = API_BASE + pageNo + "?words=true&word_fields=" + WORD_FIELDS +
       "&fields=" + VERSE_FIELDS + "&mushaf=2&per_page=all";
     return fetch(url).then(function(res){
@@ -52,6 +53,39 @@
     }).then(function(data){
       if (!data || !Array.isArray(data.verses)) throw new Error("unexpected API response shape");
       return data.verses;
+    });
+  }
+
+  // `verses/by_page/<N>` occasionally drops a verse that legitimately belongs on page N (all
+  // its words are tagged page_number===N) — confirmed for real on page 564 (Al-Qalam 68:16):
+  // absent from by_page/564's own verse list, but present in by_page/565's, with its words
+  // still correctly tagged page_number:564. A dataset-wide scan found this isn't a one-off.
+  // Fetching page N+1 alongside page N and pulling in any such orphaned verse recovers it —
+  // cheap since it only costs an extra request on a first, uncached load (both fire in
+  // parallel), and the lookahead page also gets its own cache entry, priming the very page a
+  // user is most likely to open next.
+  function fetchPage(pageNo){
+    var mainPromise = fetchRawVerses(pageNo);
+    if (pageNo >= TOTAL_PAGES) return mainPromise;
+
+    var lookaheadPromise = fetchRawVerses(pageNo + 1).then(function(verses){
+      if (!readCache(pageNo + 1)) writeCache(pageNo + 1, verses);
+      return verses;
+    }).catch(function(){ return null; }); // a failed lookahead shouldn't break the page actually being loaded
+
+    return Promise.all([mainPromise, lookaheadPromise]).then(function(results){
+      var verses = results[0];
+      var nextVerses = results[1];
+      if (!nextVerses) return verses;
+      var seenKeys = Object.create(null);
+      verses.forEach(function(v){ seenKeys[v.verse_key] = true; });
+      var merged = verses.slice();
+      nextVerses.forEach(function(v){
+        if (seenKeys[v.verse_key]) return;
+        var belongsToThisPage = v.words.some(function(w){ return w.page_number === pageNo; });
+        if (belongsToThisPage) merged.push(v);
+      });
+      return merged;
     });
   }
 
