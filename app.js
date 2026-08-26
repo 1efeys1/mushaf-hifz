@@ -349,17 +349,55 @@
   function moveCursor(delta){
     var total = countPageWords(currentPage);
     var cur = pageCursor[currentPage] || 0;
-    var next = Math.max(0, Math.min(total, cur + delta));
+    var next = cur + delta;
+    if (next > total){
+      advanceToNextPage();
+      return;
+    }
+    if (next < 0){
+      retreatToPreviousPage();
+      return;
+    }
     if (next === cur) return;
     pageCursor[currentPage] = next;
     renderPage(currentPage, true);
+  }
+
+  // "Lanjut" past the last word of a page lands on the next page with its first word already
+  // revealed — advancing by one word always means exactly that, never a dead click that just
+  // changes page with nothing revealed.
+  function advanceToNextPage(){
+    if (currentPage >= TOTAL_PAGES) return;
+    var target = currentPage + 1;
+    goToPage(target);
+    loadPageLines(target).then(function(){
+      if (currentPage !== target) return; // user navigated elsewhere before this resolved
+      pageCursor[target] = Math.min(1, countPageWords(target));
+      renderPage(target, true);
+    });
+  }
+
+  // "Balik" before the first word of a page lands on the previous page fully revealed except
+  // its last word — mirrors advanceToNextPage so retreating by one word is symmetric.
+  function retreatToPreviousPage(){
+    if (currentPage <= 1) return;
+    var target = currentPage - 1;
+    goToPage(target);
+    loadPageLines(target).then(function(){
+      if (currentPage !== target) return;
+      pageCursor[target] = Math.max(0, countPageWords(target) - 1);
+      renderPage(target, true);
+    });
   }
 
   // reveal the rest of whichever ayah comes next, in one go, instead of one word at a time
   function revealNextAyah(){
     var total = countPageWords(currentPage);
     var cur = pageCursor[currentPage] || 0;
-    if (cur >= total) return;
+    if (cur >= total){
+      advanceToNextPageRevealFirstAyah();
+      return;
+    }
     var ayahList = getPageWordAyahList(currentPage);
     var targetSurah = ayahList[cur][0], targetAyah = ayahList[cur][1];
     var next = cur;
@@ -368,6 +406,17 @@
     }
     pageCursor[currentPage] = next;
     renderPage(currentPage, true);
+  }
+
+  function advanceToNextPageRevealFirstAyah(){
+    if (currentPage >= TOTAL_PAGES) return;
+    var target = currentPage + 1;
+    goToPage(target);
+    loadPageLines(target).then(function(){
+      if (currentPage !== target) return;
+      pageCursor[target] = 0;
+      revealNextAyah(); // currentPage is now target — reveals its first ayah
+    });
   }
 
   // ---------------- page rendering ----------------
