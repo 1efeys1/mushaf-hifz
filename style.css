@@ -535,7 +535,13 @@
                     box wider instead of wrapping, overlapping its neighbors */
     max-width:8em;
   }
-  .aw-ar{ line-height:1.5; }
+  .aw-ar{
+    line-height:1.5;
+    /* em relative to the Arabic text's own (much larger) font-size, not the gloss's — tashkil
+       marks like the dip under رَّحِيم can extend past the line-height box, and a margin sized
+       off the small gloss text alone came out too thin to clear them */
+    margin-bottom:0.45em;
+  }
   .aw-gloss{
     display:block; /* was an inline span, which never wraps regardless of the parent's
                        max-width — a several-word gloss just kept going, running into the
@@ -546,7 +552,6 @@
     line-height:1.25;
     color:var(--ink-soft);
     text-align:center;
-    margin-top:5px;
     overflow-wrap:break-word;
   }
   /* a little extra clearance around the ayah-number badge specifically in this view — Arabic
