@@ -521,25 +521,38 @@
     display:flex;
     flex-wrap:wrap;
     align-items:flex-start;
-    gap:10px 2px;
+    /* em, not px: a fixed gap doesn't grow with the font-size slider, so at higher scales a
+       wrapped row's gloss text started colliding with the Arabic line below it. */
+    gap:1.3em 0.6em;
     font-size:calc(var(--ayah-size) * var(--ayah-font-scale));
   }
   .ayah-word{
     display:flex;
     flex-direction:column;
     align-items:center;
-    max-width:9em;
+    min-width:0; /* flex items default to min-width:auto (floor = content's unbroken width) —
+                    without this, max-width below is ignored and a multi-word gloss forces the
+                    box wider instead of wrapping, overlapping its neighbors */
+    max-width:8em;
   }
-  .aw-ar{ line-height:1.3; }
+  .aw-ar{ line-height:1.5; }
   .aw-gloss{
+    display:block; /* was an inline span, which never wraps regardless of the parent's
+                       max-width — a several-word gloss just kept going, running into the
+                       next word's gloss instead of wrapping under its own Arabic word */
     direction:ltr;
     font-family:'Work Sans',sans-serif;
     font-size:0.32em;
-    line-height:1.2;
+    line-height:1.25;
     color:var(--ink-soft);
     text-align:center;
-    margin-top:3px;
+    margin-top:5px;
+    overflow-wrap:break-word;
   }
+  /* a little extra clearance around the ayah-number badge specifically in this view — Arabic
+     tashkil marks on the preceding word can extend down close to it otherwise */
+  .ayah-words > .num{ margin:0 6px; }
+  .ayah-words > .sajda-tag{ margin:2px 6px 0; }
   .ayah-translation{
     direction:ltr;
     font-family:'Work Sans',sans-serif;
