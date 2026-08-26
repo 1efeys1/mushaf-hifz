@@ -14,6 +14,12 @@
     --ayah-size:26px;
     --page-scale:1;
     --ayah-font-scale:1;
+    /* set by app.js's syncFixedBarOffsets() from the actual rendered header/toolbar/footer
+       heights (they vary by breakpoint and content) — these fallbacks only cover the instant
+       before the first measurement runs. */
+    --header-h:57px;
+    --toolbar-h:74px;
+    --footer-h:60px;
   }
   *{box-sizing:border-box;}
   html,body{height:100%;}
@@ -252,6 +258,12 @@
     min-height:0;
     display:flex;
     flex-direction:column;
+    /* containing block for the dim-overlay ::before below — NOT filter/opacity/transform,
+       which would also (per spec) make this the containing block for .page-toolbar/
+       .reveal-controls, since they're position:fixed descendants of this element: they'd
+       start positioning relative to this box instead of the viewport, throwing off their
+       top/bottom placement whenever the sidebar overlay opens. */
+    position:relative;
   }
   .reader-scroll{
     flex:1;
@@ -261,7 +273,10 @@
     display:flex;
     flex-direction:column;
     align-items:center;
-    padding:34px 16px 28px;
+    /* top/bottom clear the fixed .page-toolbar/.reveal-controls bars (see below) — heights
+       vary by breakpoint/content, so app.js measures them and sets these vars (with its own
+       breathing-room buffer baked in), not hardcoded here. */
+    padding:var(--toolbar-h, 74px) 16px var(--footer-h, 60px);
   }
   /* While zoomed, centering leaves a dead gap to the left of the page that's included in the
      scrollable area but never reachable-as-content — scrolling right to see the zoomed-in
@@ -270,16 +285,28 @@
   .reader-scroll.zoomed{
     align-items:flex-start;
   }
+  /* Fixed to the viewport, not scrolled-with-content (was inside .reader-scroll, so it scrolled
+     away as soon as you scrolled down the page) — a user asked for the mode/hint/font-size
+     controls to always stay visible while scrolling/zooming/panning, same as the reveal-
+     controls footer below. Sibling of .reader-scroll in main.reader now, not its first child;
+     see buildReaderShell() in app.js. top/left are set by app.js (header height, and the
+     sidebar's width when it's open and not an overlay — see the sidebar-offset rule below). */
   .page-toolbar{
-    width:100%;
-    max-width:760px;
+    position:fixed;
+    top:var(--header-h, 57px);
+    left:0;
+    right:0;
+    z-index:12;
     display:flex;
     flex-wrap:wrap;
     align-items:center;
     row-gap:6px;
-    margin-bottom:16px;
+    padding:10px 16px;
+    background:linear-gradient(180deg,#173626,#122a1d);
+    border-bottom:1px solid #0a1610;
     color:#cbd8c2;
     font-size:13px;
+    transition:left .25s ease;
   }
   #surahStatus{
     flex:1 1 auto;
@@ -602,9 +629,17 @@
   }
   .page-loading button:hover{ background:var(--veil); }
 
-  /* fixed footer bar — always visible, never scrolls away with the page */
+  /* fixed footer bar — always visible, never scrolls/zooms/pans away with the page (fixed to
+     the viewport rather than relying on flex layout alone, which on some mobile browsers
+     didn't reliably keep it in place — see the comment on .page-toolbar above for the
+     matching top bar). left is set by app.js when the (non-overlay) sidebar is open — see the
+     sidebar-offset rule below. */
   .reveal-controls{
-    flex-shrink:0;
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:12;
     display:flex;
     flex-wrap:nowrap;
     gap:8px;
@@ -613,6 +648,19 @@
     padding:10px 12px;
     background:linear-gradient(180deg,#173626,#122a1d);
     border-top:1px solid #0a1610;
+    transition:left .25s ease;
+  }
+  /* On desktop/tablet widths the sidebar is a real in-flow column (not the fixed overlay it is
+     on mobile/landscape-phone — see their own media queries), so opening it visually narrows
+     the reader pane; the fixed bars above need to follow that same offset instead of running
+     full-width underneath the open sidebar. min-height excludes landscape-phone, which matches
+     min-width:761px too (e.g. 812×375) but keeps its sidebar as an overlay like mobile does —
+     it sets its own left/right for these bars in its own media query below instead. */
+  @media (min-width:761px) and (min-height:501px){
+    .shell:not(.collapsed) .page-toolbar,
+    .shell:not(.collapsed) .reveal-controls{
+      left:var(--sidebar-w);
+    }
   }
   .reveal-controls button{
     background:#fffef9;
@@ -683,7 +731,18 @@
   @media (max-width:760px){
     aside.sidebar{ position:fixed; top:0; bottom:0; left:0; z-index:20; height:100%; }
     .shell{ position:relative; }
-    .shell:not(.collapsed) main.reader{ filter:brightness(.4); pointer-events:none; }
+    /* an overlay, not filter/opacity on main.reader itself — those establish a containing
+       block for position:fixed descendants, which would throw off .page-toolbar/
+       .reveal-controls' viewport-relative top/bottom placement while this is open (see the
+       comment on main.reader's own position:relative). */
+    .shell:not(.collapsed) main.reader{ pointer-events:none; }
+    .shell:not(.collapsed) main.reader::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:16;
+    }
     .mushaf-page{ padding:22px 14px 30px; }
 
     /* ---- compact single-row header: [☰ brand page-jump] ---- */
@@ -709,8 +768,8 @@
 
     :root{ --ayah-size:18px; }
 
-    .reader-scroll{ padding:12px 8px 20px; }
-    .page-toolbar{ font-size:11px; margin-bottom:8px; }
+    .reader-scroll{ padding-left:8px; padding-right:8px; }
+    .page-toolbar{ font-size:11px; padding:8px 12px; }
     .surah-banner{ margin:2px auto 14px; padding:8px 12px 10px; }
     .surah-banner .meta{ font-size:10px; }
 
@@ -757,7 +816,18 @@
     .shell{ margin-left:52px; }
     main.reader{ margin-right:52px; }
     aside.sidebar{ position:fixed; left:52px; top:0; bottom:0; z-index:20; height:100%; }
-    .shell:not(.collapsed) main.reader{ filter:brightness(.4); pointer-events:none; }
+    /* an overlay, not filter/opacity on main.reader itself — those establish a containing
+       block for position:fixed descendants, which would throw off .page-toolbar/
+       .reveal-controls' viewport-relative top/bottom placement while this is open (see the
+       comment on main.reader's own position:relative). */
+    .shell:not(.collapsed) main.reader{ pointer-events:none; }
+    .shell:not(.collapsed) main.reader::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:rgba(0,0,0,.55);
+      z-index:16;
+    }
 
     .reveal-controls{
       position:fixed; right:0; bottom:0; z-index:14;
@@ -770,4 +840,15 @@
     .reveal-controls button{ padding:6px 10px; font-size:11.5px; }
     .reveal-controls button.step{ padding:6px 10px; }
     .reveal-controls button.minor{ padding:6px; font-size:13px; }
+
+    /* No spare rail to pin this to at this size, and permanently reserving space for a fixed
+       bar would eat further into an already-tight 375px-tall viewport — back to a normal
+       in-flow bar above the page like every control here already was before the mode/hint/
+       font-size toolbar existed, scrolling with the content instead of staying fixed. */
+    .page-toolbar{
+      position:static;
+      padding:6px 10px;
+      font-size:10.5px;
+    }
+    .reader-scroll{ padding-top:8px; }
   }

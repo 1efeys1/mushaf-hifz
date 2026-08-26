@@ -432,29 +432,32 @@
   var readerScroll = null; // the element that actually scrolls (set in buildReaderShell)
 
   function buildReaderShell(){
+    // .page-toolbar and .reveal-controls are siblings of .reader-scroll here, not children of
+    // it — both are position:fixed (see style.css), so they stay put while .reader-scroll
+    // scrolls/zooms/pans underneath them instead of scrolling away with the page content.
     reader.innerHTML =
-      '<div class="reader-scroll" id="readerScroll">' +
-        '<div class="page-toolbar">' +
-          '<span id="surahStatus"></span>' +
-          '<div class="toolbar-actions">' +
-            '<button id="viewModeToggle" class="mode-toggle" type="button" title="Ganti tampilan"></button>' +
-            '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
-              '💡 <select id="hintWordSelect">' +
-                '<option value="0">Off</option>' +
-                '<option value="1">1</option>' +
-                '<option value="2">2</option>' +
-                '<option value="3">3</option>' +
-                '<option value="4">4</option>' +
-                '<option value="5">5</option>' +
-              '</select>' +
-            '</label>' +
-            '<div class="font-size-control" title="Ukuran font">' +
-              '<button id="fontDec" type="button">A−</button>' +
-              '<span id="fontSizeLabel"></span>' +
-              '<button id="fontInc" type="button">A+</button>' +
-            '</div>' +
+      '<div class="page-toolbar">' +
+        '<span id="surahStatus"></span>' +
+        '<div class="toolbar-actions">' +
+          '<button id="viewModeToggle" class="mode-toggle" type="button" title="Ganti tampilan"></button>' +
+          '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
+            '💡 <select id="hintWordSelect">' +
+              '<option value="0">Off</option>' +
+              '<option value="1">1</option>' +
+              '<option value="2">2</option>' +
+              '<option value="3">3</option>' +
+              '<option value="4">4</option>' +
+              '<option value="5">5</option>' +
+            '</select>' +
+          '</label>' +
+          '<div class="font-size-control" title="Ukuran font">' +
+            '<button id="fontDec" type="button">A−</button>' +
+            '<span id="fontSizeLabel"></span>' +
+            '<button id="fontInc" type="button">A+</button>' +
           '</div>' +
         '</div>' +
+      '</div>' +
+      '<div class="reader-scroll" id="readerScroll">' +
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
@@ -501,6 +504,24 @@
     document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
     document.getElementById("prevPage").addEventListener("click", function(){ goToPage(currentPage - 1); });
     document.getElementById("nextPage").addEventListener("click", function(){ goToPage(currentPage + 1); });
+
+    syncFixedBarOffsets();
+  }
+
+  // Measures the actual rendered height of the app header and the two fixed reader bars, and
+  // publishes them as CSS vars so .reader-scroll can pad itself by exactly that much (see
+  // style.css) — heights vary by breakpoint and by which toolbar controls are visible for the
+  // current view mode, so this is measured rather than hardcoded. The +buffer is breathing
+  // room between the fixed bar and the page content, replacing what used to be the toolbar's
+  // own margin-bottom / the scroll container's padding before these became position:fixed.
+  function syncFixedBarOffsets(){
+    var headerEl = document.querySelector("header.topbar");
+    var toolbarEl = document.querySelector(".page-toolbar");
+    var footerEl = document.querySelector(".reveal-controls");
+    if (!headerEl || !toolbarEl || !footerEl) return;
+    document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
+    document.documentElement.style.setProperty("--toolbar-h", (toolbarEl.offsetHeight + 20) + "px");
+    document.documentElement.style.setProperty("--footer-h", (footerEl.offsetHeight + 16) + "px");
   }
 
   function moveCursor(delta){
@@ -792,6 +813,7 @@
   function updateStatus(surahsOnPage){
     var names = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){ return SURAH_META[n - 1][1]; });
     document.getElementById("surahStatus").textContent = names.join(" · ");
+    syncFixedBarOffsets(); // toolbar can wrap to a second line depending on the text above
   }
 
   // ---------------- keep each mushaf line on one visual row ----------------
@@ -862,7 +884,11 @@
     shell.classList.add("collapsed");
   });
 
-  window.addEventListener("resize", function(){ fitLinesToWidth(); });
+  window.addEventListener("resize", function(){ fitLinesToWidth(); syncFixedBarOffsets(); });
+  // web fonts (header.topbar's brand text, .page-toolbar's) can finish loading and reflow
+  // after boot()'s first measurement ran — re-measure once more after everything's settled so
+  // that reflow doesn't leave a stale gap/overlap between the fixed bars and the page content.
+  window.addEventListener("load", syncFixedBarOffsets);
 
   // ---------------- pinch-to-zoom (zooms the page image itself, not the text size) ----------------
   var ZOOM_MIN = 1, ZOOM_MAX = 3;
