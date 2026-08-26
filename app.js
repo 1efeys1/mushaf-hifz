@@ -11,6 +11,14 @@
     }).join("");
   }
 
+  // true wherever the sidebar renders as a fixed overlay instead of in-flow layout — matches
+  // the CSS breakpoints in style.css (portrait mobile, or extreme landscape like a phone
+  // rotated sideways, which is often *wider* than the portrait breakpoint so needs its own
+  // check here too).
+  function isOverlaySidebarMode(){
+    return window.innerWidth <= 760 || (window.innerWidth > window.innerHeight && window.innerHeight <= 500);
+  }
+
   // ---------------- state ----------------
   var currentPage = 1;
   var pageCursor = Object.create(null);      // pageNumber -> how many words (in reading order) are revealed
@@ -112,7 +120,7 @@
         '</div>';
       item.addEventListener("click", function(){
         goToPage(firstPage);
-        if (window.innerWidth <= 760) shell.classList.add("collapsed");
+        if (isOverlaySidebarMode()) shell.classList.add("collapsed");
       });
       container.appendChild(item);
     });
@@ -702,8 +710,9 @@
       '</div>';
   }
 
-  // collapse sidebar by default on small screens (--ayah-size for this width is set in CSS)
-  if (window.innerWidth <= 760){
+  // collapse sidebar by default wherever it renders as an overlay (--ayah-size for narrow
+  // screens is set in CSS)
+  if (isOverlaySidebarMode()){
     shell.classList.add("collapsed");
     fitLinesToWidth();
   }

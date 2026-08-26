@@ -75,6 +75,9 @@
   button.chip:disabled{ opacity:.35; cursor:not-allowed; }
   button.chip.primary{ border-color:var(--gold-soft); color:var(--gold-soft); }
 
+  .nav-controls{
+    display:flex; align-items:center; gap:12px;
+  }
   .page-jump{
     display:flex; align-items:center; gap:6px;
     font-size:13px; color:#cfc79f;
@@ -566,9 +569,7 @@
     .brand .ar{ font-size:17px; }
     #toggleSidebar{ order:1; }
     .settings-toggle{ display:inline-block; order:3; }
-    #prevPage{ order:4; }
-    .page-jump{ order:5; }
-    #nextPage{ order:6; }
+    .nav-controls{ order:4; gap:6px; }
 
     .btn-label{ display:none; }
     #prevPage::after{ content:"‹"; }
@@ -608,4 +609,70 @@
     .reveal-controls button{ padding:8px 10px; font-size:11.5px; }
     .reveal-controls button.step{ padding:8px 14px; }
     .reveal-controls button.minor{ padding:8px; font-size:13px; }
+  }
+
+  /* ---- extreme landscape (phone rotated sideways): move every control to the left/right
+     edges instead of top/bottom, so the mushaf page gets the full height. Independent of the
+     max-width:760px block above — a landscape phone is often *wider* than 760px (e.g. 812x375),
+     so the compacting rules that block relies on (icon-only buttons, hidden labels) need
+     repeating here rather than assuming that block already applied. ---- */
+  @media (orientation:landscape) and (max-height:500px){
+    header.topbar{
+      position:fixed; left:0; top:0; bottom:0; z-index:15;
+      width:52px;
+      flex-direction:column; flex-wrap:nowrap;
+      justify-content:flex-start; align-items:center;
+      padding:14px 6px; gap:12px;
+      border-right:1px solid #0a1610; border-bottom:none;
+    }
+    .brand{ display:none; }
+    .settings-toggle{ display:inline-flex; order:initial; }
+
+    .nav-controls{
+      position:fixed; right:0; top:0; z-index:15;
+      flex-direction:column; align-items:stretch;
+      padding:10px 8px; gap:6px; order:initial;
+    }
+    .btn-label{ display:none; }
+    #prevPage::after{ content:"‹"; }
+    #nextPage::before{ content:"›"; }
+    button.chip{ padding:7px 11px; }
+
+    .page-jump{ flex-direction:column; gap:4px; }
+    .pj-label{ display:none; }
+    .page-jump input{ width:auto; }
+    #goPage{ padding:7px 9px; }
+    #goPage .btn-label{ display:none; }
+    #goPage::after{ content:"→"; }
+
+    .font-settings{
+      display:none;
+      position:fixed; left:52px; top:0; bottom:0; right:auto;
+      width:210px;
+      flex-direction:column; align-items:stretch;
+      padding:14px 16px;
+      background:#0f2018; border-right:1px solid #0a1610;
+      z-index:30;
+    }
+    .font-settings.open{ display:flex; }
+    .font-settings label{ justify-content:space-between; }
+
+    /* header.topbar is now position:fixed (out of body's normal flex flow), so .shell would
+       otherwise start at the very left edge, sliding underneath the fixed left rail. */
+    .shell{ margin-left:52px; }
+    main.reader{ margin-right:52px; }
+    aside.sidebar{ position:fixed; left:52px; top:0; bottom:0; z-index:20; height:100%; }
+    .shell:not(.collapsed) main.reader{ filter:brightness(.4); pointer-events:none; }
+
+    .reveal-controls{
+      position:fixed; right:0; bottom:0; z-index:14;
+      width:auto;
+      flex-direction:column; flex-wrap:nowrap;
+      justify-content:flex-end; align-items:stretch;
+      padding:6px; gap:4px;
+      border-top:none; border-left:1px solid #0a1610;
+    }
+    .reveal-controls button{ padding:6px 10px; font-size:11.5px; }
+    .reveal-controls button.step{ padding:6px 10px; }
+    .reveal-controls button.minor{ padding:6px; font-size:13px; }
   }
