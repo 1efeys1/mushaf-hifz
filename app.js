@@ -28,6 +28,29 @@
   var reader = document.getElementById("reader");
   var shell = document.getElementById("shell");
 
+  // ---------------- hint words: always keep an ayah's first N words visible as a memorization
+  // cue, independent of the reveal cursor. A user preference, so it persists across sessions
+  // the same way bookmarks do — not something re-picked every time the app opens. ----------------
+  var HINT_WORDS_KEY = "mushafHifzHintWords";
+  var HINT_WORDS_MAX = 5;
+
+  function loadHintWordCount(){
+    try{
+      var n = parseInt(localStorage.getItem(HINT_WORDS_KEY), 10);
+      return Number.isInteger(n) && n >= 0 && n <= HINT_WORDS_MAX ? n : 0;
+    } catch(e){
+      return 0;
+    }
+  }
+
+  var hintWordCount = loadHintWordCount();
+
+  function setHintWordCount(n){
+    hintWordCount = Math.max(0, Math.min(HINT_WORDS_MAX, n));
+    try{ localStorage.setItem(HINT_WORDS_KEY, String(hintWordCount)); } catch(e){ /* storage unavailable — just won't persist */ }
+    if (pageLinesCache[currentPage]) renderPageContent(currentPage, pageLinesCache[currentPage], true);
+  }
+
   // ---------------- live page data: fetched from api.quran.com per page, cached ----------------
   // pageNo -> line array (see page-layout.js), populated once a page finishes loading. Every
   // helper below reads from here instead of a bundled global — the whole mushaf isn't in memory
@@ -327,6 +350,16 @@
       '<div class="reader-scroll" id="readerScroll">' +
         '<div class="page-toolbar">' +
           '<span id="surahStatus"></span>' +
+          '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
+            '💡 <select id="hintWordSelect">' +
+              '<option value="0">Off</option>' +
+              '<option value="1">1</option>' +
+              '<option value="2">2</option>' +
+              '<option value="3">3</option>' +
+              '<option value="4">4</option>' +
+              '<option value="5">5</option>' +
+            '</select>' +
+          '</label>' +
         '</div>' +
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
@@ -342,6 +375,12 @@
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
     wirePinchZoom(readerScroll);
+
+    var hintWordSelect = document.getElementById("hintWordSelect");
+    hintWordSelect.value = String(hintWordCount);
+    hintWordSelect.addEventListener("change", function(){
+      setHintWordCount(parseInt(hintWordSelect.value, 10) || 0);
+    });
 
     document.getElementById("revealAll").addEventListener("click", function(){
       pageCursor[currentPage] = countPageWords(currentPage);
@@ -489,8 +528,9 @@
           var words = text.split(" ");
           for (var wi = 0; wi < words.length; wi++){
             var isLastOfAyah = endsAyah && wi === words.length - 1;
-            var revealed = wordIndex < cursor;
-            html += '<span class="word' + (revealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">' +
+            var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
+            var revealed = wordIndex < cursor || isHintWord;
+            html += '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' +
                       words[wi] +
                       (isLastOfAyah ? '<span class="num">' + toArabicDigits(ayah) + '</span>' + (isSajdaAyah ? '<span class="sajda-tag">سجدة</span>' : "") : "") +
                     '</span> ';

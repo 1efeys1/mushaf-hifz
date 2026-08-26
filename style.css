@@ -278,6 +278,22 @@
     color:#cbd8c2;
     font-size:13px;
   }
+  .hint-control{
+    margin-left:auto;
+    display:flex;
+    align-items:center;
+    gap:6px;
+    font-size:12px;
+    color:#8ea184;
+  }
+  .hint-control select{
+    background:#0f2018;
+    border:1px solid #3c5947;
+    color:#EFE6C9;
+    border-radius:6px;
+    padding:3px 5px;
+    font-size:12px;
+  }
 
   .mushaf-page{
     position:relative;
@@ -381,6 +397,12 @@
   .word.revealed{
     filter:blur(0);
     opacity:1;
+  }
+  /* always-visible hint words (independent of the reveal cursor) get a faint underline so
+     they read as distinct from words the cursor has actually reached */
+  .word.hint{
+    text-decoration:underline dotted var(--gold-soft);
+    text-underline-offset:3px;
   }
   .word:hover{ background:#00000008; }
   .num{
