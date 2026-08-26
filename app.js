@@ -569,10 +569,11 @@
     shell.classList.toggle("collapsed");
   });
 
-  // mobile: sidebar is a fixed overlay there, so clicking anywhere outside it (including
-  // the dimmed reader behind it) should close it, same as tapping ☰ again.
+  // Clicking anywhere outside the sidebar closes it — same as tapping ☰ again. On mobile the
+  // sidebar is a fixed overlay (the dimmed reader behind it counts as "outside" too); on
+  // desktop/landscape it's in-flow, but the same click-anywhere-else behavior was requested
+  // there too (GitHub issue #3).
   document.addEventListener("click", function(e){
-    if (window.innerWidth > 760) return;
     if (shell.classList.contains("collapsed")) return;
     var sidebarEl = document.getElementById("sidebar");
     var toggleBtn = document.getElementById("toggleSidebar");
