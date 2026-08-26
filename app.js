@@ -331,11 +331,13 @@
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
-        '<button id="hideAll" class="minor" title="Sembunyikan semua">↺</button>' +
-        '<button id="backspaceBtn" class="step">⌫ Batal</button>' +
-        '<button id="spaceBtn" class="step">⎵ Lanjut</button>' +
-        '<button id="ayahBtn" class="step">⏭ 1 Ayat</button>' +
+        '<button id="nextPage"><span class="btn-label">Berikutnya ›</span></button>' +
         '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
+        '<button id="ayahBtn" class="step">⏭ 1 Ayat</button>' +
+        '<button id="spaceBtn" class="step">⎵ Lanjut</button>' +
+        '<button id="backspaceBtn" class="step">⌫ Balik</button>' +
+        '<button id="hideAll" class="minor" title="Sembunyikan semua">↺</button>' +
+        '<button id="prevPage"><span class="btn-label">‹ Sebelumnya</span></button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
@@ -352,6 +354,8 @@
     document.getElementById("spaceBtn").addEventListener("click", function(){ moveCursor(1); });
     document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });
     document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
+    document.getElementById("prevPage").addEventListener("click", function(){ goToPage(currentPage - 1); });
+    document.getElementById("nextPage").addEventListener("click", function(){ goToPage(currentPage + 1); });
   }
 
   function moveCursor(delta){
@@ -564,14 +568,22 @@
   }
 
   // ---------------- navigation controls ----------------
-  document.getElementById("prevPage").addEventListener("click", function(){ goToPage(currentPage - 1); });
-  document.getElementById("nextPage").addEventListener("click", function(){ goToPage(currentPage + 1); });
-  document.getElementById("goPage").addEventListener("click", function(){
+  // prevPage/nextPage listeners are wired in buildReaderShell() — those buttons live in the
+  // dynamically-built reveal-controls bar now, not in this static HTML.
+  function goToTypedPage(){
     var v = parseInt(document.getElementById("pageInput").value, 10);
     if (!isNaN(v)) goToPage(Math.min(TOTAL_PAGES, Math.max(1, v)));
+  }
+  var pageInputDebounce = null;
+  document.getElementById("pageInput").addEventListener("input", function(){
+    clearTimeout(pageInputDebounce);
+    pageInputDebounce = setTimeout(goToTypedPage, 2000);
   });
   document.getElementById("pageInput").addEventListener("keydown", function(e){
-    if (e.key === "Enter") document.getElementById("goPage").click();
+    if (e.key === "Enter"){
+      clearTimeout(pageInputDebounce);
+      goToTypedPage();
+    }
   });
   document.getElementById("toggleSidebar").addEventListener("click", function(){
     shell.classList.toggle("collapsed");
@@ -589,23 +601,6 @@
     shell.classList.add("collapsed");
   });
 
-  // ---------------- mobile: font/size settings tucked behind a gear icon ----------------
-  var fontSettingsPanel = document.getElementById("fontSettings");
-  document.getElementById("settingsToggle").addEventListener("click", function(e){
-    e.stopPropagation();
-    fontSettingsPanel.classList.toggle("open");
-  });
-  document.addEventListener("click", function(e){
-    if (fontSettingsPanel.classList.contains("open") && !fontSettingsPanel.contains(e.target)){
-      fontSettingsPanel.classList.remove("open");
-    }
-  });
-
-  // ---------------- font settings ----------------
-  document.getElementById("fontSelect").addEventListener("change", function(e){
-    document.documentElement.style.setProperty("--ayah-font", e.target.value);
-    fitLinesToWidth();
-  });
   window.addEventListener("resize", function(){ fitLinesToWidth(); });
 
   // ---------------- pinch-to-zoom (zooms the page image itself, not the text size) ----------------

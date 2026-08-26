@@ -93,28 +93,6 @@
     text-align:center;
   }
 
-  .font-settings{
-    display:flex;
-    align-items:center;
-    gap:14px;
-    font-size:12.5px;
-    color:#cfc79f;
-  }
-  .font-settings label{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    white-space:nowrap;
-  }
-  .font-settings select{
-    background:#0f2018;
-    border:1px solid #3c5947;
-    color:#EFE6C9;
-    border-radius:6px;
-    padding:5px 6px;
-    font-size:12.5px;
-  }
-
   /* ---------- Layout ---------- */
   .shell{
     flex:1;
@@ -549,15 +527,13 @@
   ::-webkit-scrollbar-track{ background:transparent; }
   ::-webkit-scrollbar-thumb{ background:#3c5947; border-radius:6px; }
 
-  .settings-toggle{ display:none; }
-
   @media (max-width:760px){
     aside.sidebar{ position:fixed; top:0; bottom:0; left:0; z-index:20; height:100%; }
     .shell{ position:relative; }
     .shell:not(.collapsed) main.reader{ filter:brightness(.4); pointer-events:none; }
     .mushaf-page{ padding:22px 14px 30px; }
 
-    /* ---- compact 2-row header: [☰ brand ⚙] then [‹ page ›] ---- */
+    /* ---- compact single-row header: [☰ brand page-jump] ---- */
     header.topbar{
       position:relative;
       padding:8px 10px;
@@ -568,8 +544,7 @@
     .brand .lat{ display:none; }
     .brand .ar{ font-size:17px; }
     #toggleSidebar{ order:1; }
-    .settings-toggle{ display:inline-block; order:3; }
-    .nav-controls{ order:4; gap:6px; }
+    .nav-controls{ order:3; gap:6px; }
 
     .btn-label{ display:none; }
     #prevPage::after{ content:"‹"; }
@@ -578,25 +553,6 @@
 
     .pj-label{ display:none; }
     .page-jump input{ width:44px; }
-    #goPage{ padding:7px 9px; }
-    #goPage .btn-label{ display:none; }
-    #goPage::after{ content:"→"; }
-
-    /* font controls become a dropdown panel under the header, opened via ⚙ */
-    .font-settings{
-      display:none;
-      position:absolute;
-      top:100%; left:0; right:0;
-      background:#0f2018;
-      border-bottom:1px solid #0a1610;
-      padding:14px 16px 16px;
-      flex-direction:column;
-      align-items:stretch;
-      gap:12px;
-      z-index:30;
-    }
-    .font-settings.open{ display:flex; }
-    .font-settings label{ justify-content:space-between; }
 
     :root{ --ayah-size:18px; }
 
@@ -626,8 +582,9 @@
       border-right:1px solid #0a1610; border-bottom:none;
     }
     .brand{ display:none; }
-    .settings-toggle{ display:inline-flex; order:initial; }
 
+    /* only the page-number jump lives here now — prevPage/nextPage moved into
+       .reveal-controls (see below), same as the default/portrait layout. */
     .nav-controls{
       position:fixed; right:0; top:0; z-index:15;
       flex-direction:column; align-items:stretch;
@@ -641,21 +598,6 @@
     .page-jump{ flex-direction:column; gap:4px; }
     .pj-label{ display:none; }
     .page-jump input{ width:auto; }
-    #goPage{ padding:7px 9px; }
-    #goPage .btn-label{ display:none; }
-    #goPage::after{ content:"→"; }
-
-    .font-settings{
-      display:none;
-      position:fixed; left:52px; top:0; bottom:0; right:auto;
-      width:210px;
-      flex-direction:column; align-items:stretch;
-      padding:14px 16px;
-      background:#0f2018; border-right:1px solid #0a1610;
-      z-index:30;
-    }
-    .font-settings.open{ display:flex; }
-    .font-settings label{ justify-content:space-between; }
 
     /* header.topbar is now position:fixed (out of body's normal flex flow), so .shell would
        otherwise start at the very left edge, sliding underneath the fixed left rail. */
