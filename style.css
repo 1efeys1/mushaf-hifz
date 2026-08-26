@@ -281,6 +281,13 @@
     align-items:center;
     padding:34px 16px 28px;
   }
+  /* While zoomed, centering leaves a dead gap to the left of the page that's included in the
+     scrollable area but never reachable-as-content — scrolling right to see the zoomed-in
+     overflow means scrolling through that gap first. Left-align instead so the page's own
+     left edge sits at the scroll container's left edge, with no empty space to scroll past. */
+  .reader-scroll.zoomed{
+    align-items:flex-start;
+  }
   .page-toolbar{
     width:100%;
     max-width:760px;

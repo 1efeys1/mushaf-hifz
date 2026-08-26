@@ -564,6 +564,7 @@
   function setPageZoom(z){
     pageZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
     if (mushafPageEl) mushafPageEl.style.transform = pageZoom === 1 ? "" : "scale(" + pageZoom.toFixed(3) + ")";
+    if (readerScroll) readerScroll.classList.toggle("zoomed", pageZoom > 1.001);
   }
 
   function resetPageZoom(){ setPageZoom(1); }
