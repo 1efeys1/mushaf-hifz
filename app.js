@@ -51,6 +51,63 @@
     if (pageLinesCache[currentPage]) renderPageContent(currentPage, pageLinesCache[currentPage], true);
   }
 
+  // ---------------- view mode: "mushaf" (printed page, reveal-to-memorize) vs "ayah" (per-ayah
+  // study view with word/ayah translations, no reveal cursor or pinch-zoom) — a device
+  // preference like hint words, not re-picked every session. ----------------
+  var VIEW_MODE_KEY = "mushafHifzViewMode";
+  var AYAH_FONT_SCALE_KEY = "mushafHifzAyahFontScale";
+  var AYAH_FONT_SCALE_MIN = 0.7, AYAH_FONT_SCALE_MAX = 1.8, AYAH_FONT_SCALE_STEP = 0.1;
+
+  function loadViewMode(){
+    try{
+      return localStorage.getItem(VIEW_MODE_KEY) === "ayah" ? "ayah" : "mushaf";
+    } catch(e){
+      return "mushaf";
+    }
+  }
+
+  function loadAyahFontScale(){
+    try{
+      var n = parseFloat(localStorage.getItem(AYAH_FONT_SCALE_KEY));
+      return n >= AYAH_FONT_SCALE_MIN && n <= AYAH_FONT_SCALE_MAX ? n : 1;
+    } catch(e){
+      return 1;
+    }
+  }
+
+  var viewMode = loadViewMode();
+  var ayahFontScale = loadAyahFontScale();
+
+  // syncs the toolbar/body to the current viewMode/ayahFontScale without changing either —
+  // called after buildReaderShell() creates the controls, and from the setters below.
+  function applyViewModeUI(){
+    document.body.classList.toggle("ayah-mode", viewMode === "ayah");
+    var toggleBtn = document.getElementById("viewModeToggle");
+    if (toggleBtn) toggleBtn.textContent = viewMode === "ayah" ? "📖 Mushaf" : "📝 Per Ayat";
+  }
+
+  function applyAyahFontScale(){
+    document.documentElement.style.setProperty("--ayah-font-scale", ayahFontScale.toFixed(2));
+    var label = document.getElementById("fontSizeLabel");
+    if (label) label.textContent = Math.round(ayahFontScale * 100) + "%";
+  }
+
+  function setViewMode(mode){
+    mode = mode === "ayah" ? "ayah" : "mushaf";
+    if (mode === viewMode) return;
+    viewMode = mode;
+    try{ localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch(e){ /* storage unavailable — just won't persist */ }
+    applyViewModeUI();
+    resetPageZoom(); // the two modes share one page element — never carry mushaf-mode zoom into the ayah view
+    renderPage(currentPage);
+  }
+
+  function setAyahFontScale(n){
+    ayahFontScale = Math.max(AYAH_FONT_SCALE_MIN, Math.min(AYAH_FONT_SCALE_MAX, Math.round(n * 10) / 10));
+    try{ localStorage.setItem(AYAH_FONT_SCALE_KEY, String(ayahFontScale)); } catch(e){ /* storage unavailable — just won't persist */ }
+    applyAyahFontScale();
+  }
+
   // ---------------- live page data: fetched from api.quran.com per page, cached ----------------
   // pageNo -> line array (see page-layout.js), populated once a page finishes loading. Every
   // helper below reads from here instead of a bundled global — the whole mushaf isn't in memory
@@ -71,6 +128,28 @@
       throw err;
     });
     pageLoadPromises[pageNo] = promise;
+    return promise;
+  }
+
+  // Same page, grouped by ayah with translations — for the "ayah" view mode. Separate cache
+  // from pageLinesCache/loadPageLines above: different source fetch (QuranApi.loadTranslatedPage),
+  // different shape (PageLayout.buildAyahBlocks), never mixed.
+  var pageAyahBlocksCache = Object.create(null);
+  var pageAyahBlockLoadPromises = Object.create(null);
+
+  function loadPageAyahBlocks(pageNo){
+    if (pageAyahBlocksCache[pageNo]) return Promise.resolve(pageAyahBlocksCache[pageNo]);
+    if (pageAyahBlockLoadPromises[pageNo]) return pageAyahBlockLoadPromises[pageNo];
+    var promise = QuranApi.loadTranslatedPage(pageNo).then(function(verses){
+      var blocks = PageLayout.buildAyahBlocks(pageNo, verses, SURAH_META);
+      pageAyahBlocksCache[pageNo] = blocks;
+      delete pageAyahBlockLoadPromises[pageNo];
+      return blocks;
+    }).catch(function(err){
+      delete pageAyahBlockLoadPromises[pageNo];
+      throw err;
+    });
+    pageAyahBlockLoadPromises[pageNo] = promise;
     return promise;
   }
 
@@ -312,7 +391,10 @@
     popup.style.top = top + "px";
   }
 
-  function wireLongPressBookmark(el){
+  // fixedAyahPair lets a caller that already knows which [surah,ayah] an element belongs to
+  // (the ayah-mode view — see renderAyahPageContent) skip the data-idx lookup below, which
+  // only resolves against pageWordAyahCache/pageLinesCache (the mushaf-mode line layout).
+  function wireLongPressBookmark(el, fixedAyahPair){
     var timer = null;
     var startX = 0, startY = 0;
 
@@ -329,7 +411,7 @@
       timer = setTimeout(function(){
         timer = null;
         suppressNextWordClick = true;
-        var ayahPair = getPageWordAyahList(currentPage)[+el.dataset.idx];
+        var ayahPair = fixedAyahPair || getPageWordAyahList(currentPage)[+el.dataset.idx];
         if (ayahPair) showBookmarkPopup(startX, startY, ayahPair[0], ayahPair[1]);
       }, LONG_PRESS_MS);
     });
@@ -350,16 +432,24 @@
       '<div class="reader-scroll" id="readerScroll">' +
         '<div class="page-toolbar">' +
           '<span id="surahStatus"></span>' +
-          '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
-            '💡 <select id="hintWordSelect">' +
-              '<option value="0">Off</option>' +
-              '<option value="1">1</option>' +
-              '<option value="2">2</option>' +
-              '<option value="3">3</option>' +
-              '<option value="4">4</option>' +
-              '<option value="5">5</option>' +
-            '</select>' +
-          '</label>' +
+          '<div class="toolbar-actions">' +
+            '<button id="viewModeToggle" class="mode-toggle" type="button" title="Ganti tampilan"></button>' +
+            '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
+              '💡 <select id="hintWordSelect">' +
+                '<option value="0">Off</option>' +
+                '<option value="1">1</option>' +
+                '<option value="2">2</option>' +
+                '<option value="3">3</option>' +
+                '<option value="4">4</option>' +
+                '<option value="5">5</option>' +
+              '</select>' +
+            '</label>' +
+            '<div class="font-size-control" title="Ukuran font">' +
+              '<button id="fontDec" type="button">A−</button>' +
+              '<span id="fontSizeLabel"></span>' +
+              '<button id="fontInc" type="button">A+</button>' +
+            '</div>' +
+          '</div>' +
         '</div>' +
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
@@ -382,6 +472,18 @@
       setHintWordCount(parseInt(hintWordSelect.value, 10) || 0);
     });
 
+    document.getElementById("viewModeToggle").addEventListener("click", function(){
+      setViewMode(viewMode === "ayah" ? "mushaf" : "ayah");
+    });
+    document.getElementById("fontDec").addEventListener("click", function(){
+      setAyahFontScale(ayahFontScale - AYAH_FONT_SCALE_STEP);
+    });
+    document.getElementById("fontInc").addEventListener("click", function(){
+      setAyahFontScale(ayahFontScale + AYAH_FONT_SCALE_STEP);
+    });
+    applyViewModeUI();
+    applyAyahFontScale();
+
     document.getElementById("revealAll").addEventListener("click", function(){
       pageCursor[currentPage] = countPageWords(currentPage);
       renderPage(currentPage, true);
@@ -398,6 +500,7 @@
   }
 
   function moveCursor(delta){
+    if (viewMode === "ayah") return; // no reveal cursor in the ayah/translation view
     var total = countPageWords(currentPage);
     var cur = pageCursor[currentPage] || 0;
     var next = cur + delta;
@@ -475,9 +578,41 @@
   // same page after a reveal-cursor change), otherwise shows a loading state and renders once
   // the fetch (or cache read) resolves. currentPage is set immediately either way, so a stale
   // response for a page the user has since navigated away from is detected and dropped.
+  function pageLoadingHTML(){
+    return '<div class="page-loading"><div class="ar">جَارٍ التَحْمِيل…</div><span>Memuat halaman…</span></div>';
+  }
+
+  function showPageLoadError(pageNo){
+    document.getElementById("mushafPage").innerHTML =
+      '<div class="page-loading">' +
+        '<div>Gagal memuat halaman. Cek koneksi internet.</div>' +
+        '<button id="retryPageLoad" type="button">Coba lagi</button>' +
+      '</div>';
+    document.getElementById("retryPageLoad").addEventListener("click", function(){ renderPage(pageNo, true); });
+  }
+
   function renderPage(pageNo, skipScrollReset){
     if (pageNo < 1 || pageNo > TOTAL_PAGES) return;
     currentPage = pageNo;
+    var mode = viewMode;
+
+    if (mode === "ayah"){
+      var cachedBlocks = pageAyahBlocksCache[pageNo];
+      if (cachedBlocks){
+        renderAyahPageContent(pageNo, cachedBlocks, skipScrollReset);
+        return;
+      }
+      document.getElementById("mushafPage").innerHTML = pageLoadingHTML();
+      loadPageAyahBlocks(pageNo).then(function(blocks){
+        if (currentPage !== pageNo || viewMode !== mode) return; // stale: navigated or switched mode before this resolved
+        renderAyahPageContent(pageNo, blocks, skipScrollReset);
+      }).catch(function(err){
+        console.error(err);
+        if (currentPage !== pageNo || viewMode !== mode) return;
+        showPageLoadError(pageNo);
+      });
+      return;
+    }
 
     var cached = pageLinesCache[pageNo];
     if (cached){
@@ -485,20 +620,14 @@
       return;
     }
 
-    document.getElementById("mushafPage").innerHTML =
-      '<div class="page-loading"><div class="ar">جَارٍ التَحْمِيل…</div><span>Memuat halaman…</span></div>';
+    document.getElementById("mushafPage").innerHTML = pageLoadingHTML();
     loadPageLines(pageNo).then(function(lines){
-      if (currentPage !== pageNo) return;
+      if (currentPage !== pageNo || viewMode !== mode) return;
       renderPageContent(pageNo, lines, skipScrollReset);
     }).catch(function(err){
       console.error(err);
-      if (currentPage !== pageNo) return;
-      document.getElementById("mushafPage").innerHTML =
-        '<div class="page-loading">' +
-          '<div>Gagal memuat halaman. Cek koneksi internet.</div>' +
-          '<button id="retryPageLoad" type="button">Coba lagi</button>' +
-        '</div>';
-      document.getElementById("retryPageLoad").addEventListener("click", function(){ renderPage(pageNo, true); });
+      if (currentPage !== pageNo || viewMode !== mode) return;
+      showPageLoadError(pageNo);
     });
   }
 
@@ -530,10 +659,19 @@
             var isLastOfAyah = endsAyah && wi === words.length - 1;
             var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
             var revealed = wordIndex < cursor || isHintWord;
-            html += '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' +
-                      words[wi] +
-                      (isLastOfAyah ? '<span class="num">' + toArabicDigits(ayah) + '</span>' + (isSajdaAyah ? '<span class="sajda-tag">سجدة</span>' : "") : "") +
-                    '</span> ';
+            html += '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + words[wi] + '</span>';
+            if (isLastOfAyah){
+              // Independent of the word span above (CSS filter can't be un-blurred by a
+              // descendant, so this has to be a sibling, not nested inside it): with hint
+              // words on, show which ayah is coming even before the reveal cursor reaches its
+              // last word, not just the hinted first few words with no way to tell which ayah
+              // they belong to. data-idx matches the last word so tapping the number still
+              // advances the cursor the same as tapping the word.
+              var numRevealed = wordIndex < cursor || hintWordCount > 0;
+              html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">' + toArabicDigits(ayah) + '</span>';
+              if (isSajdaAyah) html += '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">سجدة</span>';
+            }
+            html += ' ';
             wordIndex++;
           }
         });
@@ -544,13 +682,13 @@
     html += '</div><div class="page-number">— ' + toArabicDigits(pageNo) + ' —</div>';
     container.innerHTML = html;
 
-    container.querySelectorAll(".word").forEach(function(el){
+    container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
       el.addEventListener("click", function(){
         if (suppressNextWordClick){ suppressNextWordClick = false; return; }
         pageCursor[currentPage] = +el.dataset.idx + 1;
         renderPage(currentPage, true);
       });
-      wireLongPressBookmark(el);
+      if (el.classList.contains("word")) wireLongPressBookmark(el);
     });
 
     document.getElementById("pageInput").value = pageNo;
@@ -562,6 +700,70 @@
 
     updateStatus(surahsOnPage);
     fitLinesToWidth();
+    if (!skipScrollReset){
+      resetPageZoom();
+      if (readerScroll) readerScroll.scrollTop = 0;
+    }
+  }
+
+  // "ayah" view mode — word-by-word + full-ayah Indonesian translation, continuous reading
+  // order (no mushaf line_number layout, no reveal cursor: showing translations alongside
+  // hidden Arabic would defeat the point of hiding words for memorization testing, so this
+  // mode is a pure study/reading view — every word is always visible).
+  function renderAyahPageContent(pageNo, blocks, skipScrollReset){
+    var container = document.getElementById("mushafPage");
+    var html = '<div class="ayah-flow">';
+    var surahsOnPage = [];
+
+    function noteSurah(n){ if (surahsOnPage.indexOf(n) === -1) surahsOnPage.push(n); }
+
+    blocks.forEach(function(block){
+      if (block[0] === "h"){
+        var surahNumber = block[1], title = block[2];
+        var meta = SURAH_META[surahNumber - 1];
+        noteSurah(surahNumber);
+        html += '<div class="surah-banner">' +
+          '<div class="name">' + title + '</div>' +
+          '<div class="meta">' +
+            '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
+            ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +
+          '</div>' +
+        '</div>';
+      } else if (block[0] === "b"){
+        html += '<div class="basmalah">' + BASMALAH + '</div>';
+      } else { // "ayah"
+        var surah = block[1], ayah = block[2], isSajdaAyah = block[3], words = block[4], ayahTranslation = block[5];
+        noteSurah(surah);
+        html += '<div class="ayah-block" data-surah="' + surah + '" data-ayah="' + ayah + '"><div class="ayah-words">';
+        words.forEach(function(pair){
+          html += '<div class="ayah-word"><span class="aw-ar">' + pair[0] + '</span>' +
+            (pair[1] ? '<span class="aw-gloss">' + pair[1] + '</span>' : "") +
+          '</div>';
+        });
+        html += '<span class="num revealed">' + toArabicDigits(ayah) + '</span>' +
+          (isSajdaAyah ? '<span class="sajda-tag revealed">سجدة</span>' : "") +
+        '</div>' +
+        (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation + '</div>' : "") +
+        '</div>';
+      }
+    });
+
+    html += '</div><div class="page-number">— ' + toArabicDigits(pageNo) + ' —</div>';
+    container.innerHTML = html;
+
+    container.querySelectorAll(".ayah-block").forEach(function(block){
+      var ayahPair = [+block.dataset.surah, +block.dataset.ayah];
+      block.querySelectorAll(".ayah-word").forEach(function(wordEl){
+        wireLongPressBookmark(wordEl, ayahPair);
+      });
+    });
+
+    document.getElementById("pageInput").value = pageNo;
+    document.getElementById("prevPage").disabled = pageNo <= 1;
+    document.getElementById("nextPage").disabled = pageNo >= TOTAL_PAGES;
+
+    if (surahsOnPage.length) highlightActiveSurah(surahsOnPage[0]);
+    updateStatus(surahsOnPage);
     if (!skipScrollReset){
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
@@ -686,12 +888,14 @@
     }
 
     el.addEventListener("touchstart", function(e){
+      if (viewMode === "ayah") return; // no pinch-zoom in the ayah/translation view
       if (e.touches.length === 2){
         pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
         pinchStartZoom = pageZoom;
       }
     }, { passive: true });
     el.addEventListener("touchmove", function(e){
+      if (viewMode === "ayah") return;
       if (e.touches.length === 2 && pinchStartDist){
         e.preventDefault();
         scheduleZoom(pinchStartZoom * (touchDistance(e.touches[0], e.touches[1]) / pinchStartDist));
@@ -702,6 +906,7 @@
     });
     // trackpad pinch — Chrome/Firefox/Safari all report it as a wheel event with ctrlKey set
     el.addEventListener("wheel", function(e){
+      if (viewMode === "ayah") return;
       if (!e.ctrlKey) return;
       e.preventDefault();
       scheduleZoom(pageZoom - e.deltaY * 0.01);
@@ -713,13 +918,17 @@
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input") return;
 
-    if (e.code === "Space"){
+    if (viewMode === "ayah"){
+      // no reveal cursor to move — let Space/Backspace do their normal browser thing
+    } else if (e.code === "Space"){
       e.preventDefault();
       moveCursor(1);
     } else if (e.key === "Backspace"){
       e.preventDefault();
       moveCursor(-1);
-    } else if (e.key === "ArrowRight"){
+    }
+
+    if (e.key === "ArrowRight"){
       goToPage(currentPage + 1);
     } else if (e.key === "ArrowLeft"){
       goToPage(currentPage - 1);

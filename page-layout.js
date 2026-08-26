@@ -82,5 +82,45 @@
     return lines;
   }
 
-  window.PageLayout = { buildPageLines: buildPageLines };
+  // Same page, grouped by ayah instead of by mushaf line_number — for the "Per Ayat" study
+  // view (word-by-word + full-ayah translation), which reads continuously rather than
+  // reproducing the printed page's exact line breaks. Needs `translations` (the verse-level
+  // translation resource id) and `language` (word-by-word gloss language) requested on the
+  // fetch for `word.translation`/`verse.translations` to be present — see quran-api.js's
+  // loadTranslatedPage.
+  //
+  // Block format:
+  //   surah header: ["h", surahNumber, arabicTitle]
+  //   Basmalah:     ["b"]
+  //   ayah block:   ["ayah", surah, ayah, isSajda, [[word, wordTranslation], ...], ayahTranslation]
+  function buildAyahBlocks(pageNo, verses, surahMeta){
+    var blocks = [];
+    var lastSurah = null;
+
+    verses.forEach(function(v){
+      var colon = v.verse_key.indexOf(":");
+      var surah = +v.verse_key.slice(0, colon);
+      var ayah = +v.verse_key.slice(colon + 1);
+      var wordsOnPage = v.words.filter(function(w){ return w.page_number === pageNo && w.char_type_name === "word"; });
+      if (!wordsOnPage.length) return; // this verse doesn't actually appear on this page
+
+      if (surah !== lastSurah && ayah === 1){
+        var meta = surahMeta[surah - 1];
+        blocks.push(["h", surah, meta[1]]);
+        if (meta[7]) blocks.push(["b"]);
+        lastSurah = surah;
+      }
+
+      var words = wordsOnPage.map(function(w){
+        return [w.text_uthmani, w.translation ? w.translation.text : ""];
+      });
+      var ayahTranslation = (v.translations && v.translations[0]) ? v.translations[0].text : "";
+      var isSajda = v.sajdah_number != null;
+      blocks.push(["ayah", surah, ayah, isSajda, words, ayahTranslation]);
+    });
+
+    return blocks;
+  }
+
+  window.PageLayout = { buildPageLines: buildPageLines, buildAyahBlocks: buildAyahBlocks };
 })(window);
