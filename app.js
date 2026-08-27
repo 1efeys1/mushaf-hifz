@@ -606,11 +606,13 @@
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
+        '<button id="nextPage"><span class="btn-label">Berikutnya ›</span></button>' +
         '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
         '<button id="ayahBtn" class="step">⏭ 1 Ayat</button>' +
         '<button id="spaceBtn" class="step">⎵ Lanjut</button>' +
         '<button id="backspaceBtn" class="step">⌫ Balik</button>' +
         '<button id="hideAll" class="minor" title="Sembunyikan semua">↺</button>' +
+        '<button id="prevPage"><span class="btn-label">‹ Sebelumnya</span></button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
@@ -628,6 +630,8 @@
     document.getElementById("spaceBtn").addEventListener("click", function(){ moveCursor(1); });
     document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });
     document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
+    document.getElementById("prevPage").addEventListener("click", function(){ goToPage(currentPage - 1); });
+    document.getElementById("nextPage").addEventListener("click", function(){ goToPage(currentPage + 1); });
 
     syncFixedBarOffsets();
   }
@@ -876,6 +880,8 @@
     });
 
     document.getElementById("pageInput").value = pageNo;
+    document.getElementById("prevPage").disabled = pageNo <= 1;
+    document.getElementById("nextPage").disabled = pageNo >= TOTAL_PAGES;
 
     var surahsOnPage = pageSurahNumbers(pageNo);
     if (surahsOnPage.length) highlightActiveSurah(surahsOnPage[0]);
@@ -960,6 +966,8 @@
     });
 
     document.getElementById("pageInput").value = pageNo;
+    document.getElementById("prevPage").disabled = pageNo <= 1;
+    document.getElementById("nextPage").disabled = pageNo >= TOTAL_PAGES;
 
     if (surahsOnPage.length) highlightActiveSurah(surahsOnPage[0]);
     updateStatus(surahsOnPage);

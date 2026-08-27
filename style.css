@@ -837,6 +837,9 @@
     #toggleSettings{ order:4; }
 
     .btn-label{ display:none; }
+    /* page-nav buttons stay desktop-only — on touch layouts pages turn by swiping
+       (issue #12), and the footer row needs the space */
+    #prevPage, #nextPage{ display:none; }
     button.chip{ padding:7px 11px; }
 
     .pj-label{ display:none; }
@@ -884,6 +887,9 @@
       padding:0;
     }
     .edge-fab:hover{ border-color:var(--gold-soft); }
+
+    /* phone landscape is swipe territory too — page-nav stays hidden */
+    #prevPage, #nextPage{ display:none; }
 
     /* no persistent left rail anymore — the edge fabs overlay the page, so the shell starts
        at the very left; the right margin matches the right rail's fixed 96px width (below)
