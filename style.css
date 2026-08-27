@@ -374,7 +374,7 @@
     cursor:pointer;
   }
   .font-size-control button:hover{ background:#1a3527; }
-  #fontSizeLabel{ min-width:3em; text-align:center; }
+  #fontSizeLabel, #translationSizeLabel{ min-width:3em; text-align:center; }
 
   /* hint words, the font-size slider, and the reveal/hide/step buttons all still apply in the
      ayah view — same reveal cursor hides/reveals the Arabic words there too (see
@@ -613,7 +613,7 @@
   .ayah-translation{
     direction:ltr;
     font-family:'Work Sans',sans-serif;
-    font-size:14px;
+    font-size:calc(14px * var(--translation-font-scale, 1));
     line-height:1.55;
     color:var(--ink-soft);
     margin-top:10px;

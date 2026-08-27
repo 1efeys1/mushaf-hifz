@@ -56,6 +56,7 @@
   // preference like hint words, not re-picked every session. ----------------
   var VIEW_MODE_KEY = "mushafHifzViewMode";
   var AYAH_FONT_SCALE_KEY = "mushafHifzAyahFontScale";
+  var TRANSLATION_FONT_SCALE_KEY = "mushafHifzTranslationFontScale";
   var AYAH_FONT_SCALE_MIN = 0.7, AYAH_FONT_SCALE_MAX = 1.8, AYAH_FONT_SCALE_STEP = 0.1;
 
   function loadViewMode(){
@@ -75,8 +76,18 @@
     }
   }
 
+  function loadTranslationFontScale(){
+    try{
+      var n = parseFloat(localStorage.getItem(TRANSLATION_FONT_SCALE_KEY));
+      return n >= AYAH_FONT_SCALE_MIN && n <= AYAH_FONT_SCALE_MAX ? n : 1;
+    } catch(e){
+      return 1;
+    }
+  }
+
   var viewMode = loadViewMode();
   var ayahFontScale = loadAyahFontScale();
+  var translationFontScale = loadTranslationFontScale();
 
   // syncs the toolbar/body to the current viewMode/ayahFontScale without changing either —
   // called after buildReaderShell() creates the controls, and from the setters below.
@@ -90,6 +101,12 @@
     document.documentElement.style.setProperty("--ayah-font-scale", ayahFontScale.toFixed(2));
     var label = document.getElementById("fontSizeLabel");
     if (label) label.textContent = Math.round(ayahFontScale * 100) + "%";
+  }
+
+  function applyTranslationFontScale(){
+    document.documentElement.style.setProperty("--translation-font-scale", translationFontScale.toFixed(2));
+    var label = document.getElementById("translationSizeLabel");
+    if (label) label.textContent = Math.round(translationFontScale * 100) + "%";
   }
 
   function setViewMode(mode){
@@ -106,6 +123,12 @@
     ayahFontScale = Math.max(AYAH_FONT_SCALE_MIN, Math.min(AYAH_FONT_SCALE_MAX, Math.round(n * 10) / 10));
     try{ localStorage.setItem(AYAH_FONT_SCALE_KEY, String(ayahFontScale)); } catch(e){ /* storage unavailable — just won't persist */ }
     applyAyahFontScale();
+  }
+
+  function setTranslationFontScale(n){
+    translationFontScale = Math.max(AYAH_FONT_SCALE_MIN, Math.min(AYAH_FONT_SCALE_MAX, Math.round(n * 10) / 10));
+    try{ localStorage.setItem(TRANSLATION_FONT_SCALE_KEY, String(translationFontScale)); } catch(e){ /* storage unavailable — just won't persist */ }
+    applyTranslationFontScale();
   }
 
   // ---------------- tajweed: color-code the Arabic by recitation rule ----------------
@@ -560,10 +583,15 @@
               '<option value="5">5</option>' +
             '</select>' +
           '</label>' +
-          '<div class="font-size-control" title="Ukuran font">' +
+          '<div class="font-size-control" title="Ukuran font Arab">' +
             '<button id="fontDec" type="button">A−</button>' +
             '<span id="fontSizeLabel"></span>' +
             '<button id="fontInc" type="button">A+</button>' +
+          '</div>' +
+          '<div class="font-size-control" title="Ukuran terjemahan">' +
+            '<button id="translationDec" type="button">T−</button>' +
+            '<span id="translationSizeLabel"></span>' +
+            '<button id="translationInc" type="button">T+</button>' +
           '</div>' +
         '</div>' +
       '</div>' +
@@ -603,8 +631,15 @@
     document.getElementById("fontInc").addEventListener("click", function(){
       setAyahFontScale(ayahFontScale + AYAH_FONT_SCALE_STEP);
     });
+    document.getElementById("translationDec").addEventListener("click", function(){
+      setTranslationFontScale(translationFontScale - AYAH_FONT_SCALE_STEP);
+    });
+    document.getElementById("translationInc").addEventListener("click", function(){
+      setTranslationFontScale(translationFontScale + AYAH_FONT_SCALE_STEP);
+    });
     applyViewModeUI();
     applyAyahFontScale();
+    applyTranslationFontScale();
 
     document.getElementById("revealAll").addEventListener("click", function(){
       pageCursor[currentPage] = countPageWords(currentPage);
