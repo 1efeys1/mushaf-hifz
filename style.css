@@ -837,8 +837,6 @@
     #toggleSettings{ order:4; }
 
     .btn-label{ display:none; }
-    #prevPage::after{ content:"‹"; }
-    #nextPage::before{ content:"›"; }
     button.chip{ padding:7px 11px; }
 
     .pj-label{ display:none; }
@@ -886,11 +884,6 @@
       padding:0;
     }
     .edge-fab:hover{ border-color:var(--gold-soft); }
-
-    /* reveal-controls holds prev/next page too — icon-only here (labels hidden) */
-    .btn-label{ display:none; }
-    #prevPage::after{ content:"‹"; }
-    #nextPage::before{ content:"›"; }
 
     /* no persistent left rail anymore — the edge fabs overlay the page, so the shell starts
        at the very left; the right margin matches the right rail's fixed 96px width (below)
