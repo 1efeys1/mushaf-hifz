@@ -828,6 +828,7 @@
         var meta = SURAH_META[surahNumber - 1];
         html += '<div class="surah-banner">' +
           '<div class="name">' + title + '</div>' +
+          '<div class="name-lat">' + meta[2] + '</div>' +
           '<div class="meta">' +
             '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
             ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +
@@ -916,6 +917,7 @@
         noteSurah(surahNumber);
         html += '<div class="surah-banner">' +
           '<div class="name">' + title + '</div>' +
+          '<div class="name-lat">' + meta[2] + '</div>' +
           '<div class="meta">' +
             '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
             ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +

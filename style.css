@@ -478,6 +478,17 @@
     font-size:calc(var(--ayah-size) * var(--page-scale) * 1.15);
     color:var(--green-deep);
   }
+  /* Latin (Indonesian transliteration) surah name under the Arabic one — same string the
+     sidebar shows (SURAH_META's nameEn) */
+  .surah-banner .name-lat{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:calc(13px * var(--page-scale));
+    letter-spacing:.04em;
+    color:var(--ink-soft);
+    margin-top:2px;
+  }
   .surah-banner .meta{
     font-family:'Work Sans',sans-serif;
     font-size:11.5px;
