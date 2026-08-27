@@ -852,13 +852,11 @@
     .reveal-controls button.minor{ padding:8px; font-size:13px; }
   }
 
-  /* ---- extreme landscape (phone rotated sideways): move every control to the left/right
-     edges instead of top/bottom, so the mushaf page gets the full height. Independent of the
-     max-width:760px block above — a landscape phone is often *wider* than 760px (e.g. 812x375),
-     so the compacting rules that block relies on (icon-only buttons, hidden labels) need
-     repeating here rather than assuming that block already applied. ---- */
-  /* ---------- landscape phone: no top/left chrome at all (issue #4) — the only triggers are
-     two small floating buttons, everything else opens as an overlay on demand ---------- */
+  /* ---------- landscape phone (max-height:500px): no top/left chrome at all (issue #4) —
+     the only persistent triggers are two small floating buttons; the right rail is a
+     vertically-centered column, everything else opens as an overlay on demand.
+     Independent of the max-width:760px block above — a landscape phone is often *wider*
+     than 760px (e.g. 812x375), so rules that block relies on are repeated, not assumed. ---------- */
   .edge-fabs{ display:none; }
   @media (orientation:landscape) and (max-height:500px){
     header.topbar{ display:none; }
@@ -884,32 +882,12 @@
       padding:0;
     }
     .edge-fab:hover{ border-color:var(--gold-soft); }
-    .brand{ display:none; }
-    /* no room for the surah name on a phone-landscape screen — the surah banner on the page
-       itself carries that information here (issue #4: top/bottom of the mushaf stay clear). */
-    .topbar-status{ display:none; }
 
-    /* only the page-number jump lives here now — prevPage/nextPage moved into
-       .reveal-controls (see below), same as the default/portrait layout. */
-    .nav-controls{
-      position:fixed; right:0; top:0; z-index:15;
-      width:96px;
-      flex-direction:column; align-items:stretch;
-      padding:10px 8px; gap:6px; order:initial;
-    }
+    /* reveal-controls holds prev/next page too — icon-only here (labels hidden) */
     .btn-label{ display:none; }
     #prevPage::after{ content:"‹"; }
     #nextPage::before{ content:"›"; }
-    button.chip{ padding:7px 11px; }
 
-    .page-jump{ flex-direction:column; gap:4px; }
-    .pj-label{ display:none; }
-    .page-jump input{ width:auto; }
-
-    /* header.topbar is now position:fixed (out of body's normal flex flow), so .shell would
-       otherwise start at the very left edge, sliding underneath the fixed left rail. The
-       right margin matches the right rail's fixed 96px width (below) so the page never sits
-       under it — a content-driven width drifted (buttons ~82px) and overlapped the page. */
     /* no persistent left rail anymore — the edge fabs overlay the page, so the shell starts
        at the very left; the right margin matches the right rail's fixed 96px width (below)
        so the page never sits under it. */
@@ -930,17 +908,21 @@
     }
 
     .reveal-controls{
-      position:fixed; right:0; bottom:0; z-index:14;
-      /* the base rule pins left:0 right:0 (a full-width footer bar) — without unsetting left,
-         this "column" stays stretched across the whole viewport and covers the mushaf.
-         Fixed 96px width (matching main.reader's margin-right above) instead of
-         content-driven, so the reserved space can never drift from the rail's real size. */
+      position:fixed; right:0; z-index:14;
+      /* vertically centered column (user request) — top:50% + translateY instead of the old
+         bottom:0 pin; the base rule pins left:0 right:0 (a full-width footer bar), and left
+         must stay unset or the "column" stretches across the whole viewport again. Fixed
+         96px width matches main.reader's margin-right above. */
+      top:50%;
+      transform:translateY(-50%);
       left:auto;
       width:96px;
       flex-direction:column; flex-wrap:nowrap;
       justify-content:flex-end; align-items:stretch;
       padding:6px; gap:4px;
-      border-top:none; border-left:1px solid #0a1610;
+      border:1px solid #0a1610;
+      border-radius:10px 0 0 10px;
+      background:linear-gradient(180deg,#173626,#122a1d);
     }
     .reveal-controls button{ padding:6px 10px; font-size:11.5px; }
     .reveal-controls button.step{ padding:6px 10px; }
