@@ -96,6 +96,14 @@
     direction:rtl;
     text-align:center;
   }
+  .topbar-status .ss-ar{ font-family:'Amiri Quran',serif; }
+  .topbar-status .ss-lat{
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:.85em;
+    color:#b9c7ae;
+  }
   .page-jump{
     display:flex; align-items:center; gap:6px;
     font-size:13px; color:#cfc79f;

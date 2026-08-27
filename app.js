@@ -980,8 +980,11 @@
   }
 
   function updateStatus(surahsOnPage){
-    var names = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){ return SURAH_META[n - 1][1]; });
-    document.getElementById("surahStatus").textContent = names.join(" · ");
+    var html = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){
+      var m = SURAH_META[n - 1];
+      return '<span class="ss-ar">' + m[1] + '</span> <span class="ss-lat">' + m[2] + '</span>';
+    }).join('<span class="ss-sep"> · </span>');
+    document.getElementById("surahStatus").innerHTML = html;
     syncFixedBarOffsets(); // toolbar can wrap to a second line depending on the text above
   }
 
