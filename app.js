@@ -1041,18 +1041,28 @@
   // Clicking anywhere outside the sidebar closes it — same as tapping ☰ again. On mobile the
   // sidebar is a fixed overlay (the dimmed reader behind it counts as "outside" too); on
   // desktop/landscape it's in-flow, but the same click-anywhere-else behavior was requested
-  // there too (GitHub issue #3). The settings panel closes the same way.
+  // there too (GitHub issue #3). The settings panel closes the same way. The landscape-only
+  // floating triggers (edge fabs) are excluded so a tap that just OPENED a panel doesn't
+  // bubble up and immediately close it again.
   document.addEventListener("click", function(e){
     var settingsPanel = document.getElementById("settingsPanel");
+    var settingsTrigger = e.target.closest("#toggleSettings, #fabSettings");
     if (settingsPanel && settingsPanel.classList.contains("open") &&
-        !settingsPanel.contains(e.target) && !document.getElementById("toggleSettings").contains(e.target)){
+        !settingsPanel.contains(e.target) && !settingsTrigger){
       settingsPanel.classList.remove("open");
     }
     if (shell.classList.contains("collapsed")) return;
     var sidebarEl = document.getElementById("sidebar");
-    var toggleBtn = document.getElementById("toggleSidebar");
-    if (sidebarEl.contains(e.target) || toggleBtn.contains(e.target)) return;
+    if (sidebarEl.contains(e.target) || e.target.closest("#toggleSidebar, #fabSidebar")) return;
     shell.classList.add("collapsed");
+  });
+
+  // landscape-phone triggers (the topbar itself is display:none there — see style.css)
+  document.getElementById("fabSidebar").addEventListener("click", function(){
+    shell.classList.toggle("collapsed");
+  });
+  document.getElementById("fabSettings").addEventListener("click", function(){
+    document.getElementById("settingsPanel").classList.toggle("open");
   });
 
   window.addEventListener("resize", function(){ fitLinesToWidth(); syncFixedBarOffsets(); });

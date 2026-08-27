@@ -857,31 +857,36 @@
      max-width:760px block above — a landscape phone is often *wider* than 760px (e.g. 812x375),
      so the compacting rules that block relies on (icon-only buttons, hidden labels) need
      repeating here rather than assuming that block already applied. ---- */
+  /* ---------- landscape phone: no top/left chrome at all (issue #4) — the only triggers are
+     two small floating buttons, everything else opens as an overlay on demand ---------- */
+  .edge-fabs{ display:none; }
   @media (orientation:landscape) and (max-height:500px){
-    header.topbar{
-      position:fixed; left:0; top:0; bottom:0; z-index:15;
-      width:56px;
-      flex-direction:column; flex-wrap:nowrap;
-      justify-content:flex-start; align-items:stretch;
-      padding:14px 6px; gap:12px;
-      border-right:1px solid #0a1610; border-bottom:none;
+    header.topbar{ display:none; }
+    .edge-fabs{
+      display:flex;
+      position:fixed;
+      left:8px; top:8px;
+      gap:8px;
+      z-index:15;
     }
-    /* buttons fill the rail as compact squares with centered content — Android replaces
-       bare ☰/⚙ glyphs with emoji whose metrics differ from desktop fonts, which made the
-       chips wider than the rail and clipped them (the raw glyphs in index.html carry
-       U+FE0E text-presentation selectors to avoid the emoji substitution in the first
-       place); fixed sizing keeps the rail deterministic either way. */
-    header.topbar .chip{
-      width:100%;
-      padding:10px 0;
+    .edge-fab{
+      width:42px; height:42px;
+      border-radius:50%;
+      background:#122a1dd9;
+      border:1px solid #3c5947;
+      color:#E8E0C0;
+      font-size:16px;
+      font-family:'Work Sans',sans-serif;
+      cursor:pointer;
       display:flex;
       align-items:center;
       justify-content:center;
-      border-radius:10px;
+      padding:0;
     }
+    .edge-fab:hover{ border-color:var(--gold-soft); }
     .brand{ display:none; }
-    /* no room for the surah name in a 52px rail — the surah banner on the page itself carries
-       that information here (issue #4: top/bottom of the mushaf stay completely clear). */
+    /* no room for the surah name on a phone-landscape screen — the surah banner on the page
+       itself carries that information here (issue #4: top/bottom of the mushaf stay clear). */
     .topbar-status{ display:none; }
 
     /* only the page-number jump lives here now — prevPage/nextPage moved into
@@ -905,9 +910,12 @@
        otherwise start at the very left edge, sliding underneath the fixed left rail. The
        right margin matches the right rail's fixed 96px width (below) so the page never sits
        under it — a content-driven width drifted (buttons ~82px) and overlapped the page. */
-    .shell{ margin-left:56px; }
+    /* no persistent left rail anymore — the edge fabs overlay the page, so the shell starts
+       at the very left; the right margin matches the right rail's fixed 96px width (below)
+       so the page never sits under it. */
+    .shell{ margin-left:0; }
     main.reader{ margin-right:96px; }
-    aside.sidebar{ position:fixed; left:56px; top:0; bottom:0; z-index:20; height:100%; }
+    aside.sidebar{ position:fixed; left:0; top:0; bottom:0; z-index:20; height:100%; }
     /* an overlay, not filter/opacity on main.reader itself — those establish a containing
        block for position:fixed descendants, which would throw off .reveal-controls'
        viewport-relative placement while this is open (see the comment on main.reader's own
