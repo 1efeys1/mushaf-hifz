@@ -1146,11 +1146,11 @@
   }
 
   // ---------------- swipe left/right to page turn (issue #12) ----------------
-  // RTL convention (same as quran_android's RTL pager): dragging right-to-left (dx < 0) goes
-  // to the NEXT page, left-to-right goes back. Deliberately skipped for: multi-touch (that's
-  // a pinch), a single finger starting on a horizontally-scrollable mushaf line (that drag
-  // should scroll the line, not the page), and while zoomed (that's panning). Requires the
-  // horizontal component to clearly dominate so vertical page scrolling never pages.
+  // RTL paging feel (user-confirmed): dragging left-to-right (dx > 0) pulls the NEXT page in
+  // from the left edge, right-to-left goes back. Deliberately skipped for: multi-touch
+  // (that's a pinch), a single finger starting on a horizontally-scrollable mushaf line (that
+  // drag should scroll the line, not the page), and while zoomed (that's panning). Requires
+  // the horizontal component to clearly dominate so vertical page scrolling never pages.
   var SWIPE_MIN_DX = 60;
   var SWIPE_DOMINANCE = 1.5;
 
@@ -1175,7 +1175,7 @@
       var t = e.changedTouches[0];
       var dx = t.clientX - startX, dy = t.clientY - startY;
       if (Math.abs(dx) < SWIPE_MIN_DX || Math.abs(dx) < Math.abs(dy) * SWIPE_DOMINANCE) return;
-      goToPage(dx < 0 ? currentPage + 1 : currentPage - 1);
+      goToPage(dx > 0 ? currentPage + 1 : currentPage - 1);
     });
   }
 
