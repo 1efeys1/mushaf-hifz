@@ -512,8 +512,12 @@
     margin:0;
     overflow-x:auto;
     overflow-y:hidden;
+    /* a line that still overflows past the fit floor keeps its fallback horizontal scroll,
+       but the scrollbar itself renders as a stray "separator line" between rows (issue #15)
+       — hide it entirely (both engines), the scroll still works */
+    scrollbar-width:none;
   }
-  .mushaf-line::-webkit-scrollbar{ height:4px; }
+  .mushaf-line::-webkit-scrollbar{ display:none; }
   .word{
     cursor:pointer;
     filter:blur(7px);
