@@ -875,6 +875,7 @@
        .reveal-controls (see below), same as the default/portrait layout. */
     .nav-controls{
       position:fixed; right:0; top:0; z-index:15;
+      width:96px;
       flex-direction:column; align-items:stretch;
       padding:10px 8px; gap:6px; order:initial;
     }
@@ -888,9 +889,11 @@
     .page-jump input{ width:auto; }
 
     /* header.topbar is now position:fixed (out of body's normal flex flow), so .shell would
-       otherwise start at the very left edge, sliding underneath the fixed left rail. */
+       otherwise start at the very left edge, sliding underneath the fixed left rail. The
+       right margin matches the right rail's fixed 96px width (below) so the page never sits
+       under it — a content-driven width drifted (buttons ~82px) and overlapped the page. */
     .shell{ margin-left:52px; }
-    main.reader{ margin-right:52px; }
+    main.reader{ margin-right:96px; }
     aside.sidebar{ position:fixed; left:52px; top:0; bottom:0; z-index:20; height:100%; }
     /* an overlay, not filter/opacity on main.reader itself — those establish a containing
        block for position:fixed descendants, which would throw off .reveal-controls'
@@ -907,7 +910,12 @@
 
     .reveal-controls{
       position:fixed; right:0; bottom:0; z-index:14;
-      width:auto;
+      /* the base rule pins left:0 right:0 (a full-width footer bar) — without unsetting left,
+         this "column" stays stretched across the whole viewport and covers the mushaf.
+         Fixed 96px width (matching main.reader's margin-right above) instead of
+         content-driven, so the reserved space can never drift from the rail's real size. */
+      left:auto;
+      width:96px;
       flex-direction:column; flex-wrap:nowrap;
       justify-content:flex-end; align-items:stretch;
       padding:6px; gap:4px;
