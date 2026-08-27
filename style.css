@@ -830,6 +830,7 @@
     .topbar-status{ order:2; font-size:15px; }
     #toggleSidebar{ order:1; }
     .nav-controls{ order:3; gap:6px; }
+    #toggleSettings{ order:4; }
 
     .btn-label{ display:none; }
     #prevPage::after{ content:"‹"; }
@@ -866,6 +867,9 @@
       border-right:1px solid #0a1610; border-bottom:none;
     }
     .brand{ display:none; }
+    /* no room for the surah name in a 52px rail — the surah banner on the page itself carries
+       that information here (issue #4: top/bottom of the mushaf stay completely clear). */
+    .topbar-status{ display:none; }
 
     /* only the page-number jump lives here now — prevPage/nextPage moved into
        .reveal-controls (see below), same as the default/portrait layout. */
@@ -889,9 +893,9 @@
     main.reader{ margin-right:52px; }
     aside.sidebar{ position:fixed; left:52px; top:0; bottom:0; z-index:20; height:100%; }
     /* an overlay, not filter/opacity on main.reader itself — those establish a containing
-       block for position:fixed descendants, which would throw off .page-toolbar/
-       .reveal-controls' viewport-relative top/bottom placement while this is open (see the
-       comment on main.reader's own position:relative). */
+       block for position:fixed descendants, which would throw off .reveal-controls'
+       viewport-relative placement while this is open (see the comment on main.reader's own
+       position:relative). */
     .shell:not(.collapsed) main.reader{ pointer-events:none; }
     .shell:not(.collapsed) main.reader::before{
       content:"";
