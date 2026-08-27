@@ -617,6 +617,7 @@
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
     wirePinchZoom(readerScroll);
+    wireSwipeNavigation(readerScroll);
 
     document.getElementById("revealAll").addEventListener("click", function(){
       pageCursor[currentPage] = countPageWords(currentPage);
@@ -1137,6 +1138,40 @@
       e.preventDefault();
       scheduleZoom(pageZoom - e.deltaY * 0.01);
     }, { passive: false });
+  }
+
+  // ---------------- swipe left/right to page turn (issue #12) ----------------
+  // RTL convention (same as quran_android's RTL pager): dragging right-to-left (dx < 0) goes
+  // to the NEXT page, left-to-right goes back. Deliberately skipped for: multi-touch (that's
+  // a pinch), a single finger starting on a horizontally-scrollable mushaf line (that drag
+  // should scroll the line, not the page), and while zoomed (that's panning). Requires the
+  // horizontal component to clearly dominate so vertical page scrolling never pages.
+  var SWIPE_MIN_DX = 60;
+  var SWIPE_DOMINANCE = 1.5;
+
+  function wireSwipeNavigation(el){
+    var startX = 0, startY = 0, tracking = false;
+
+    el.addEventListener("touchstart", function(e){
+      if (e.touches.length !== 1){ tracking = false; return; } // pinch start — not a swipe
+      var line = e.target.closest ? e.target.closest(".mushaf-line") : null;
+      if (line && line.scrollWidth > line.clientWidth + 1){ tracking = false; return; }
+      tracking = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    el.addEventListener("touchcancel", function(){ tracking = false; });
+
+    el.addEventListener("touchend", function(e){
+      if (!tracking) return;
+      tracking = false;
+      if (pageZoom > 1.001) return; // panning a zoomed page, not turning it
+      var t = e.changedTouches[0];
+      var dx = t.clientX - startX, dy = t.clientY - startY;
+      if (Math.abs(dx) < SWIPE_MIN_DX || Math.abs(dx) < Math.abs(dy) * SWIPE_DOMINANCE) return;
+      goToPage(dx < 0 ? currentPage + 1 : currentPage - 1);
+    });
   }
 
   // ---------------- keyboard: space to reveal next word, backspace to undo ----------------
