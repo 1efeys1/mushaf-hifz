@@ -339,6 +339,8 @@
     gap:6px;
     font-size:12px;
     color:#8ea184;
+    cursor:pointer;
+    white-space:nowrap;
   }
   .hint-control select{
     background:#0f2018;
@@ -347,6 +349,10 @@
     border-radius:6px;
     padding:3px 5px;
     font-size:12px;
+  }
+  .hint-control input[type="checkbox"]{
+    accent-color:var(--gold-soft);
+    margin:0;
   }
   /* only shown in the "ayah" view mode (see body.ayah-mode below) — the mushaf view has no
      font-size control since text size there is driven by pinch-zoom instead. */
@@ -486,6 +492,29 @@
     text-underline-offset:3px;
   }
   .word:hover{ background:#00000008; }
+
+  /* ---------- tajweed coloring ----------
+     Spans are always in the DOM (parsed from the API's inline rule tags — see app.js); whether
+     they take color at all is one body class, so the toggle is instant and never re-renders.
+     Palette is the standard quran.com tajweed set (verified against the live API's class
+     names; madda_obligatory_monfasel/mottasel share the obligatory-madda color). */
+  .tj{ color:inherit; }
+  body.tajweed-on .tj.ham_wasl,
+  body.tajweed-on .tj.slnt,
+  body.tajweed-on .tj.laam_shamsiyah{ color:#AAAAAA; }
+  body.tajweed-on .tj.madda_normal{ color:#537FFF; }
+  body.tajweed-on .tj.madda_permissible{ color:#4050FF; }
+  body.tajweed-on .tj.madda_necessary{ color:#000EBC; }
+  body.tajweed-on .tj.madda_obligatory_monfasel,
+  body.tajweed-on .tj.madda_obligatory_mottasel{ color:#2144C1; }
+  body.tajweed-on .tj.qalaqah{ color:#DD0008; }
+  body.tajweed-on .tj.ikhafa{ color:#9400A8; }
+  body.tajweed-on .tj.ikhafa_shafawi{ color:#D500B7; }
+  body.tajweed-on .tj.idgham_shafawi{ color:#58B800; }
+  body.tajweed-on .tj.idgham_ghunnah{ color:#169777; }
+  body.tajweed-on .tj.idgham_wo_ghunnah{ color:#169200; }
+  body.tajweed-on .tj.iqlab{ color:#26BFFD; }
+  body.tajweed-on .tj.ghunnah{ color:#FF7E1E; }
   /* Siblings of the last .word in an ayah, not children — a parent's CSS filter can't be
      un-blurred by a descendant, so keeping them independently revealable (see the hint-words
      comment in app.js) requires them to sit outside the .word span's blur, with their own

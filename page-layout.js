@@ -7,12 +7,17 @@
 // so the 15-line-per-page layout is exactly what the API says it is, not something computed here:
 //   surah header: ["h", surahNumber, arabicTitle]
 //   Basmalah:     ["b"]
-//   text line:    ["t", [[surah, ayah, startWordPosition, "word1 word2 ...", endsAyah, isSajda], ...]]
+//   text line:    ["t", [[surah, ayah, startWordPosition, [word1, word2, ...], endsAyah, isSajda, tajweedWords], ...]]
 //     — one array entry per run of consecutive words belonging to the same ayah; most lines have
-//       exactly one run, a line spanning an ayah boundary has two+. `endsAyah` is true only when
+//       exactly one run, a line spanning an ayah boundary has two+. Words stay as an array (one
+//       entry per API word entry — an entry CAN render as multiple word spans when it carries a
+//       trailing waqf mark, see app.js). `endsAyah` is true only when
 //       this run's last word is genuinely the ayah's last word on this page (the API marks the
 //       ayah-ending digit as its own "end"-type word entry, right after it) — an ayah that
 //       continues onto the next page has no such marker on this page, so no run here ends it.
+//       `tajweedWords` is the raw text_uthmani_tajweed string per word entry (inline
+//       `<rule class=...>` tags, see app.js), parallel to the words array — parallel to word
+//       ENTRIES, never re-split here; alignment to rendered spans is resolved at render time.
 (function(window){
   "use strict";
 
@@ -27,7 +32,8 @@
         if (w.page_number !== pageNo) return;
         entries.push({
           surah: surah, ayah: ayah, line: w.line_number, position: w.position,
-          text: w.text_uthmani, isEnd: w.char_type_name !== "word", isSajda: isSajda
+          text: w.text_uthmani, tajweed: w.text_uthmani_tajweed || null,
+          isEnd: w.char_type_name !== "word", isSajda: isSajda
         });
       });
     });
@@ -39,7 +45,7 @@
     var curRun = null;
 
     function flushRun(endsAyah){
-      if (curRun) runs.push([curRun.surah, curRun.ayah, curRun.startWord, curRun.words.join(" "), !!endsAyah, curRun.isSajda]);
+      if (curRun) runs.push([curRun.surah, curRun.ayah, curRun.startWord, curRun.words, !!endsAyah, curRun.isSajda, curRun.tajweed]);
       curRun = null;
     }
     function flushLine(){
@@ -73,9 +79,10 @@
       }
       if (!curRun || curRun.surah !== e.surah || curRun.ayah !== e.ayah){
         flushRun(false);
-        curRun = { surah: e.surah, ayah: e.ayah, startWord: e.position, words: [], isSajda: e.isSajda };
+        curRun = { surah: e.surah, ayah: e.ayah, startWord: e.position, words: [], tajweed: [], isSajda: e.isSajda };
       }
       curRun.words.push(e.text);
+      curRun.tajweed.push(e.tajweed);
     });
     flushLine();
 
@@ -92,12 +99,13 @@
   // Block format:
   //   surah header: ["h", surahNumber, arabicTitle]
   //   Basmalah:     ["b"]
-  //   ayah block:   ["ayah", surah, ayah, isSajda, [[word, wordTranslation], ...], ayahTranslation, startWord]
+  //   ayah block:   ["ayah", surah, ayah, isSajda, [[word, wordTranslation, tajweedText], ...], ayahTranslation, startWord]
   //     — startWord is the first page-word's 1-indexed position *within its ayah* (from the
   //       API, same field mushaf-mode runs use as their own startWord). Needed by app.js's hint
   //       words: an ayah split across a page boundary only has its tail words here, so "first N
   //       words of the ayah" has to be computed from this, not from the word's index in this
-  //       page's own (possibly-partial) word list.
+  //       page's own (possibly-partial) word list. tajweedText is the raw text_uthmani_tajweed
+  //       string (inline rule tags, see app.js), null when the fetch didn't include it.
   function buildAyahBlocks(pageNo, verses, surahMeta){
     var blocks = [];
     var lastSurah = null;
@@ -117,7 +125,7 @@
       }
 
       var words = wordsOnPage.map(function(w){
-        return [w.text_uthmani, w.translation ? w.translation.text : ""];
+        return [w.text_uthmani, w.translation ? w.translation.text : "", w.text_uthmani_tajweed || null];
       });
       var ayahTranslation = (v.translations && v.translations[0]) ? v.translations[0].text : "";
       var isSajda = v.sajdah_number != null;

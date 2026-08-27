@@ -14,18 +14,20 @@
   // Bump this if the requested edition/fields ever change again — old cache entries under a
   // different prefix are simply ignored (and age out via each browser's own storage limits),
   // instead of serving whatever edition happened to be cached under the same key before.
-  var CACHE_PREFIX = "mushafHifzPageCache:v2:";
+  var CACHE_PREFIX = "mushafHifzPageCache:v3:";
   // Separate namespace from CACHE_PREFIX: the response shape differs (adds word.translation
   // and verse.translations), so it can't share cache entries with the plain mushaf-mode fetch.
-  var CACHE_PREFIX_TRANSLATED = "mushafHifzTranslatedPageCache:v1:";
+  var CACHE_PREFIX_TRANSLATED = "mushafHifzTranslatedPageCache:v2:";
   // The API provider's terms cap how long responses may be cached — 7 days.
   var CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var API_BASE = "https://api.quran.com/api/v4/verses/by_page/";
   // code_v2 must stay in word_fields even though its value is unused — see file header. It's
   // what keeps this fetch on the same 16-line page boundaries as the plain mushaf-mode fetch,
   // which matters here too: buildAyahBlocks filters words by page_number, and 15-line vs
-  // 16-line editions don't share page breaks.
-  var WORD_FIELDS = "text_uthmani,line_number,position,code_v2";
+  // 16-line editions don't share page breaks. text_uthmani_tajweed carries inline rule tags
+  // (see app.js's tajweed renderer) — same caveats: value needed for rendering, removing it
+  // silently kills the tajweed toggle.
+  var WORD_FIELDS = "text_uthmani,text_uthmani_tajweed,line_number,position,code_v2";
   var VERSE_FIELDS = "verse_key,sajdah_number";
   // translations=33: Kemenag (Indonesian Islamic Affairs Ministry) verse-level translation —
   // the standard/default Indonesian option among api.quran.com's resources. language=id: word-

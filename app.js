@@ -108,6 +108,113 @@
     applyAyahFontScale();
   }
 
+  // ---------------- tajweed: color-code the Arabic by recitation rule ----------------
+  // Data comes as inline tags in text_uthmani_tajweed (see quran-api.js) — e.g.
+  // "<rule class=ham_wasl>ٱ</rule>للَّهِ", tags may nest (custom-alef-maksora inside
+  // madda_normal). Words are ALWAYS rendered with the parsed .tj spans; whether those spans
+  // actually take color is a single body class, so toggling is instant and never re-renders
+  // (which would risk disturbing the reveal cursor mid-page).
+  var TAJWEED_KEY = "mushafHifzTajweed";
+
+  function loadTajweedEnabled(){
+    try{ return localStorage.getItem(TAJWEED_KEY) === "on"; } catch(e){ return false; }
+  }
+
+  var tajweedEnabled = loadTajweedEnabled();
+
+  function applyTajweedUI(){
+    document.body.classList.toggle("tajweed-on", tajweedEnabled);
+    var cb = document.getElementById("tajweedToggle");
+    if (cb) cb.checked = tajweedEnabled;
+  }
+
+  function setTajweedEnabled(on){
+    tajweedEnabled = !!on;
+    try{ localStorage.setItem(TAJWEED_KEY, tajweedEnabled ? "on" : "off"); } catch(e){ /* storage unavailable — just won't persist */ }
+    applyTajweedUI();
+  }
+
+  // Only classes we have a color for become spans (see .tj rules in style.css); anything else
+  // the API might introduce (custom-*) keeps its text, uncolored.
+  var TAJWEED_RULES = {
+    ham_wasl:1, slnt:1, laam_shamsiyah:1,
+    madda_normal:1, madda_permissible:1, madda_necessary:1,
+    madda_obligatory_monfasel:1, madda_obligatory_mottasel:1,
+    qalaqah:1, ikhafa:1, ikhafa_shafawi:1, idgham_shafawi:1,
+    idgham_ghunnah:1, idgham_wo_ghunnah:1, iqlab:1, ghunnah:1
+  };
+
+  function escapeHtml(s){
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Tag syntax as the live API sends it (attribute unquoted); "tajweed" is the tag name the
+  // newer documented API uses — accept both so a provider-side rename doesn't strip colors.
+  var TAJWEED_TAG = /<(rule|tajweed) class=([\w-]+)>|<\/(rule|tajweed)>/g;
+
+  function tajweedToHtml(str){
+    var out = "";
+    var stack = []; // emitted class names (null entries = uncolored depth, keeps nesting balanced)
+    var pos = 0;
+    var m;
+    TAJWEED_TAG.lastIndex = 0;
+    while ((m = TAJWEED_TAG.exec(str))){
+      if (m.index > pos) out += escapeHtml(str.slice(pos, m.index));
+      pos = m.index + m[0].length;
+      if (m[3]){
+        if (stack.length && stack.pop()) out += "</span>";
+      } else if (TAJWEED_RULES[m[2]]){
+        out += '<span class="tj ' + m[2] + '">';
+        stack.push(m[2]);
+      } else {
+        stack.push(null);
+      }
+    }
+    if (pos < str.length) out += escapeHtml(str.slice(pos));
+    while (stack.length){ if (stack.pop()) out += "</span>"; }
+    return out;
+  }
+
+  // One API word entry can span multiple rendered word segments: a trailing waqf mark is
+  // separated by a space in text_uthmani but ZWNJ-joined in the tajweed text. Split the
+  // tajweed string at top level (outside tags — the tag syntax itself contains spaces) on
+  // spaces/ZWNJ and return per-segment HTML only when the counts line up with the plain
+  // segments; null otherwise, so the caller renders the plain text for that entry (a handful
+  // of words per page at most, imperceptible).
+  function tajweedSegments(tj, segCount){
+    if (!tj) return null;
+    var parts = [];
+    var depth = 0;
+    var cur = "";
+    for (var i = 0; i < tj.length; i++){
+      var ch = tj.charAt(i);
+      if (ch === "<"){
+        var close = tj.indexOf(">", i);
+        if (close === -1) return null; // malformed — let the caller fall back
+        var tag = tj.slice(i, close + 1);
+        i = close;
+        if (/^<(rule|tajweed) class=[\w-]+>$/.test(tag)){
+          depth++;
+          cur += tag;
+        } else if (/^<\/(rule|tajweed)>$/.test(tag)){
+          depth = Math.max(0, depth - 1);
+          cur += tag;
+        }
+        // any other tag is dropped — only tajweedToHtml's own whitelisted spans ever enter HTML
+        continue;
+      }
+      if (depth === 0 && (ch === " " || ch === "\u200c")){
+        parts.push(cur);
+        cur = "";
+        continue;
+      }
+      cur += ch;
+    }
+    parts.push(cur);
+    if (parts.length !== segCount) return null;
+    return parts.map(tajweedToHtml);
+  }
+
   // ---------------- live page data: fetched from api.quran.com per page, cached ----------------
   // pageNo -> line array (see page-layout.js), populated once a page finishes loading. Every
   // helper below reads from here instead of a bundled global — the whole mushaf isn't in memory
@@ -166,8 +273,10 @@
       pageLinesCache[pageNo].forEach(function(line){
         if (line[0] === "t"){
           line[1].forEach(function(run){
-            var surah = run[0], ayah = run[1], count = run[3].split(" ").length;
-            for (var i = 0; i < count; i++) list.push([surah, ayah]);
+            var surah = run[0], ayah = run[1];
+            run[3].forEach(function(wordEntry){
+              for (var i = 0; i < wordEntry.split(" ").length; i++) list.push([surah, ayah]);
+            });
           });
         }
       });
@@ -440,6 +549,7 @@
         '<span id="surahStatus"></span>' +
         '<div class="toolbar-actions">' +
           '<button id="viewModeToggle" class="mode-toggle" type="button" title="Ganti tampilan"></button>' +
+          '<label class="hint-control" title="Warna aturan tajwid"><input type="checkbox" id="tajweedToggle"> Tajwid</label>' +
           '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
             '💡 <select id="hintWordSelect">' +
               '<option value="0">Off</option>' +
@@ -478,6 +588,11 @@
     hintWordSelect.addEventListener("change", function(){
       setHintWordCount(parseInt(hintWordSelect.value, 10) || 0);
     });
+
+    document.getElementById("tajweedToggle").addEventListener("change", function(e){
+      setTajweedEnabled(e.target.checked);
+    });
+    applyTajweedUI();
 
     document.getElementById("viewModeToggle").addEventListener("click", function(){
       setViewMode(viewMode === "ayah" ? "mushaf" : "ayah");
@@ -677,26 +792,29 @@
       } else { // "t" — a real mushaf line
         html += '<div class="mushaf-line">';
         line[1].forEach(function(run){
-          var surah = run[0], ayah = run[1], startWord = run[2], text = run[3], endsAyah = run[4], isSajdaAyah = run[5];
-          var words = text.split(" ");
-          for (var wi = 0; wi < words.length; wi++){
-            var isLastOfAyah = endsAyah && wi === words.length - 1;
-            var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
-            var revealed = wordIndex < cursor || isHintWord;
-            html += '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + words[wi] + '</span>';
-            if (isLastOfAyah){
-              // Independent of the word span above (CSS filter can't be un-blurred by a
-              // descendant, so this has to be a sibling, not nested inside it): with hint
-              // words on, show which ayah is coming even before the reveal cursor reaches its
-              // last word, not just the hinted first few words with no way to tell which ayah
-              // they belong to. data-idx matches the last word so tapping the number still
-              // advances the cursor the same as tapping the word.
-              var numRevealed = wordIndex < cursor || hintWordCount > 0;
-              html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">' + toArabicDigits(ayah) + '</span>';
-              if (isSajdaAyah) html += '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">سجدة</span>';
+          var surah = run[0], ayah = run[1], startWord = run[2], wordEntries = run[3], endsAyah = run[4], isSajdaAyah = run[5], tajweedEntries = run[6];
+          for (var wi = 0; wi < wordEntries.length; wi++){
+            var segs = wordEntries[wi].split(" ");
+            var tjParts = tajweedSegments(tajweedEntries ? tajweedEntries[wi] : null, segs.length);
+            for (var si = 0; si < segs.length; si++){
+              var isLastOfAyah = endsAyah && wi === wordEntries.length - 1 && si === segs.length - 1;
+              var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
+              var revealed = wordIndex < cursor || isHintWord;
+              html += '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>';
+              if (isLastOfAyah){
+                // Independent of the word span above (CSS filter can't be un-blurred by a
+                // descendant, so this has to be a sibling, not nested inside it): with hint
+                // words on, show which ayah is coming even before the reveal cursor reaches its
+                // last word, not just the hinted first few words with no way to tell which ayah
+                // they belong to. data-idx matches the last word so tapping the number still
+                // advances the cursor the same as tapping the word.
+                var numRevealed = wordIndex < cursor || hintWordCount > 0;
+                html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">' + toArabicDigits(ayah) + '</span>';
+                if (isSajdaAyah) html += '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">سجدة</span>';
+              }
+              html += ' ';
+              wordIndex++;
             }
-            html += ' ';
-            wordIndex++;
           }
         });
         html += '</div>';
@@ -766,8 +884,11 @@
         words.forEach(function(pair, wi){
           var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
           var revealed = wordIndex < cursor || isHintWord;
+          // whole-entry tajweed here (one span per word entry in this view — no per-segment
+          // alignment needed, unlike mushaf mode's space-split rendering)
+          var arHtml = pair[2] ? tajweedToHtml(pair[2]) : pair[0];
           html += '<div class="ayah-word">' +
-            '<span class="word aw-ar' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + pair[0] + '</span>' +
+            '<span class="word aw-ar' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + arHtml + '</span>' +
             (pair[1] ? '<span class="aw-gloss">' + pair[1] + '</span>' : "") +
           '</div>';
           wordIndex++;
