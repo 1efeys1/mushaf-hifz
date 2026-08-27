@@ -860,11 +860,24 @@
   @media (orientation:landscape) and (max-height:500px){
     header.topbar{
       position:fixed; left:0; top:0; bottom:0; z-index:15;
-      width:52px;
+      width:56px;
       flex-direction:column; flex-wrap:nowrap;
-      justify-content:flex-start; align-items:center;
+      justify-content:flex-start; align-items:stretch;
       padding:14px 6px; gap:12px;
       border-right:1px solid #0a1610; border-bottom:none;
+    }
+    /* buttons fill the rail as compact squares with centered content — Android replaces
+       bare ☰/⚙ glyphs with emoji whose metrics differ from desktop fonts, which made the
+       chips wider than the rail and clipped them (the raw glyphs in index.html carry
+       U+FE0E text-presentation selectors to avoid the emoji substitution in the first
+       place); fixed sizing keeps the rail deterministic either way. */
+    header.topbar .chip{
+      width:100%;
+      padding:10px 0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:10px;
     }
     .brand{ display:none; }
     /* no room for the surah name in a 52px rail — the surah banner on the page itself carries
@@ -892,9 +905,9 @@
        otherwise start at the very left edge, sliding underneath the fixed left rail. The
        right margin matches the right rail's fixed 96px width (below) so the page never sits
        under it — a content-driven width drifted (buttons ~82px) and overlapped the page. */
-    .shell{ margin-left:52px; }
+    .shell{ margin-left:56px; }
     main.reader{ margin-right:96px; }
-    aside.sidebar{ position:fixed; left:52px; top:0; bottom:0; z-index:20; height:100%; }
+    aside.sidebar{ position:fixed; left:56px; top:0; bottom:0; z-index:20; height:100%; }
     /* an overlay, not filter/opacity on main.reader itself — those establish a containing
        block for position:fixed descendants, which would throw off .reveal-controls'
        viewport-relative placement while this is open (see the comment on main.reader's own
