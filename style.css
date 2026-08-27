@@ -14,11 +14,10 @@
     --ayah-size:26px;
     --page-scale:1;
     --ayah-font-scale:1;
-    /* set by app.js's syncFixedBarOffsets() from the actual rendered header/toolbar/footer
+    /* set by app.js's syncFixedBarOffsets() from the actual rendered header/footer
        heights (they vary by breakpoint and content) — these fallbacks only cover the instant
        before the first measurement runs. */
     --header-h:57px;
-    --toolbar-h:74px;
     --footer-h:60px;
   }
   *{box-sizing:border-box;}
@@ -84,6 +83,18 @@
 
   .nav-controls{
     display:flex; align-items:center; gap:12px;
+  }
+  .topbar-status{
+    flex:1 1 auto;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+    color:#D9CFA6;
+    font-family:'Amiri Quran',serif;
+    direction:rtl;
+    text-align:center;
   }
   .page-jump{
     display:flex; align-items:center; gap:6px;
@@ -273,10 +284,10 @@
     display:flex;
     flex-direction:column;
     align-items:center;
-    /* top/bottom clear the fixed .page-toolbar/.reveal-controls bars (see below) — heights
-       vary by breakpoint/content, so app.js measures them and sets these vars (with its own
-       breathing-room buffer baked in), not hardcoded here. */
-    padding:var(--toolbar-h, 74px) 16px var(--footer-h, 60px);
+    /* bottom clears the fixed .reveal-controls bar — its height varies by breakpoint/content,
+       so app.js measures it and sets the var (with a breathing-room buffer baked in), not
+       hardcoded here. */
+    padding:14px 16px var(--footer-h, 60px);
   }
   /* While zoomed, centering leaves a dead gap to the left of the page that's included in the
      scrollable area but never reachable-as-content — scrolling right to see the zoomed-in
@@ -285,102 +296,136 @@
   .reader-scroll.zoomed{
     align-items:flex-start;
   }
-  /* Fixed to the viewport, not scrolled-with-content (was inside .reader-scroll, so it scrolled
-     away as soon as you scrolled down the page) — a user asked for the mode/hint/font-size
-     controls to always stay visible while scrolling/zooming/panning, same as the reveal-
-     controls footer below. Sibling of .reader-scroll in main.reader now, not its first child;
-     see buildReaderShell() in app.js. top/left are set by app.js (header height, and the
-     sidebar's width when it's open and not an overlay — see the sidebar-offset rule below). */
-  .page-toolbar{
+  /* ---------- settings panel (right edge, all reader controls live here — issue #14) ----------
+     Always an overlay (mobile AND desktop): it's a transient settings sheet, so it never
+     competes for in-flow width the way the left surah sidebar does on desktop. */
+  .settings-panel{
     position:fixed;
-    top:var(--header-h, 57px);
-    left:0;
-    right:0;
-    z-index:12;
+    top:0; right:0; bottom:0;
+    width:min(320px, 86vw);
+    z-index:40;
+    background:#0f2018;
+    border-left:1px solid #0a1610;
+    color:#E8E0C0;
     display:flex;
-    flex-wrap:wrap;
+    flex-direction:column;
+    overflow-y:auto;
+    padding:0 16px 24px;
+    transform:translateX(100%);
+    transition:transform .25s ease;
+    box-shadow:-14px 0 40px -18px #000000cc;
+  }
+  .settings-panel.open{ transform:translateX(0); }
+  .settings-head{
+    position:sticky;
+    top:0;
+    z-index:1;
+    display:flex;
     align-items:center;
-    row-gap:6px;
-    padding:10px 16px;
-    background:linear-gradient(180deg,#173626,#122a1d);
-    border-bottom:1px solid #0a1610;
-    color:#cbd8c2;
+    justify-content:space-between;
+    padding:14px 0 12px;
+    background:#0f2018;
+    border-bottom:1px solid #1c3327;
+    font-family:'Cormorant Garamond',serif;
+    font-style:italic;
+    font-weight:600;
+    font-size:17px;
+    letter-spacing:.03em;
+    color:#D9CFA6;
+  }
+  .settings-close{
+    background:transparent;
+    border:none;
+    color:#7f8f7c;
+    font-size:15px;
+    cursor:pointer;
+    padding:4px 8px;
+  }
+  .settings-close:hover{ color:var(--gold-soft); }
+  .settings-group{
+    padding:16px 0 4px;
+    border-bottom:1px solid #1c3327;
+  }
+  .settings-group:last-child{ border-bottom:none; }
+  .settings-label{
+    font-size:10.5px;
+    letter-spacing:.09em;
+    text-transform:uppercase;
+    color:#7f8f7c;
+    margin-bottom:10px;
+  }
+  .segmented{
+    display:flex;
+    gap:6px;
+  }
+  .segmented button{
+    flex:1;
+    background:transparent;
+    border:1px solid #345342;
+    color:#9fae97;
+    padding:8px 10px;
+    border-radius:8px;
     font-size:13px;
-    transition:left .25s ease;
+    font-family:'Work Sans',sans-serif;
+    cursor:pointer;
   }
-  #surahStatus{
-    flex:1 1 auto;
-    min-width:0;
-    overflow:hidden;
-    text-overflow:ellipsis;
-    white-space:nowrap;
+  .segmented button:hover{ background:#16301f; }
+  .segmented button.active{
+    background:#1b3a25;
+    border-color:var(--gold-soft);
+    color:#F1E9C8;
   }
-  .toolbar-actions{
-    margin-left:auto;
+  .check-row{
     display:flex;
     align-items:center;
     gap:10px;
-  }
-  .mode-toggle{
-    background:transparent;
-    border:1px solid #3c5947;
-    color:#E8E0C0;
-    padding:5px 11px;
-    border-radius:999px;
-    font-size:12px;
-    font-family:'Work Sans',sans-serif;
+    padding:6px 0;
+    font-size:13px;
     cursor:pointer;
-    white-space:nowrap;
   }
-  .mode-toggle:hover{ background:#24463482; }
-  .hint-control{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    font-size:12px;
-    color:#8ea184;
-    cursor:pointer;
-    white-space:nowrap;
-  }
-  .hint-control select{
-    background:#0f2018;
-    border:1px solid #3c5947;
-    color:#EFE6C9;
-    border-radius:6px;
-    padding:3px 5px;
-    font-size:12px;
-  }
-  .hint-control input[type="checkbox"]{
+  .check-row input[type="checkbox"]{
     accent-color:var(--gold-soft);
     margin:0;
+    flex-shrink:0;
   }
-  /* only shown in the "ayah" view mode (see body.ayah-mode below) — the mushaf view has no
-     font-size control since text size there is driven by pinch-zoom instead. */
-  .font-size-control{
-    display:none;
+  .slider-row{
+    display:flex;
     align-items:center;
-    gap:6px;
-    font-size:12px;
-    color:#8ea184;
+    gap:10px;
+    padding:6px 0;
+    font-size:13px;
   }
-  .font-size-control button{
-    background:#0f2018;
-    border:1px solid #3c5947;
+  .slider-name{
+    flex:0 0 6.2em;
+    color:#9fae97;
+    font-size:12px;
+  }
+  .slider-row input[type="range"]{
+    flex:1;
+    min-width:0;
+    accent-color:var(--gold-soft);
+  }
+  .slider-value{
+    min-width:3.2em;
+    text-align:right;
+    color:#EFE6C9;
+    font-size:12px;
+  }
+  .slider-row select{
+    background:#132a1e;
+    border:1px solid #345342;
     color:#EFE6C9;
     border-radius:6px;
-    padding:3px 8px;
+    padding:4px 6px;
     font-size:12px;
-    font-family:'Work Sans',sans-serif;
-    cursor:pointer;
   }
-  .font-size-control button:hover{ background:#1a3527; }
-  #fontSizeLabel, #translationSizeLabel{ min-width:3em; text-align:center; }
 
-  /* hint words, the font-size slider, and the reveal/hide/step buttons all still apply in the
-     ayah view — same reveal cursor hides/reveals the Arabic words there too (see
-     renderAyahPageContent in app.js), translations just stay visible throughout as a
-     memorization aid. Only the mode-appropriate controls differ: */
-  body.ayah-mode .font-size-control{ display:flex; }
+  /* content visibility toggles — pure body classes set by the settings panel; never a
+     re-render, so the reveal cursor is untouched (hide-arabic only matches ayah-view words,
+     the printed mushaf has no .aw-ar and ignores it by design) */
+  body.hide-arabic .aw-ar{ display:none; }
+  body.hide-translation .ayah-translation{ display:none; }
+  body.hide-word-gloss .aw-gloss{ display:none; }
 
   .mushaf-page{
     position:relative;
@@ -681,12 +726,11 @@
   }
   /* On desktop/tablet widths the sidebar is a real in-flow column (not the fixed overlay it is
      on mobile/landscape-phone — see their own media queries), so opening it visually narrows
-     the reader pane; the fixed bars above need to follow that same offset instead of running
+     the reader pane; the fixed footer bar needs to follow that same offset instead of running
      full-width underneath the open sidebar. min-height excludes landscape-phone, which matches
      min-width:761px too (e.g. 812×375) but keeps its sidebar as an overlay like mobile does —
      it sets its own left/right for these bars in its own media query below instead. */
   @media (min-width:761px) and (min-height:501px){
-    .shell:not(.collapsed) .page-toolbar,
     .shell:not(.collapsed) .reveal-controls{
       left:var(--sidebar-w);
     }
@@ -774,16 +818,16 @@
     }
     .mushaf-page{ padding:22px 14px 30px; }
 
-    /* ---- compact single-row header: [☰ brand page-jump] ---- */
+    /* ---- compact single-row header: [☰ surahStatus page-jump ⚙] — the decorative brand
+       wordmark gives way to the current surah name on narrow screens ---- */
     header.topbar{
       position:relative;
       padding:8px 10px;
       gap:6px;
       justify-content:space-between;
     }
-    .brand{ margin-right:0; order:2; }
-    .brand .lat{ display:none; }
-    .brand .ar{ font-size:17px; }
+    .brand{ display:none; }
+    .topbar-status{ order:2; font-size:15px; }
     #toggleSidebar{ order:1; }
     .nav-controls{ order:3; gap:6px; }
 
@@ -798,7 +842,6 @@
     :root{ --ayah-size:18px; }
 
     .reader-scroll{ padding-left:8px; padding-right:8px; }
-    .page-toolbar{ font-size:11px; padding:8px 12px; }
     .surah-banner{ margin:2px auto 14px; padding:8px 12px 10px; }
     .surah-banner .meta{ font-size:10px; }
 
@@ -869,15 +912,4 @@
     .reveal-controls button{ padding:6px 10px; font-size:11.5px; }
     .reveal-controls button.step{ padding:6px 10px; }
     .reveal-controls button.minor{ padding:6px; font-size:13px; }
-
-    /* No spare rail to pin this to at this size, and permanently reserving space for a fixed
-       bar would eat further into an already-tight 375px-tall viewport — back to a normal
-       in-flow bar above the page like every control here already was before the mode/hint/
-       font-size toolbar existed, scrolling with the content instead of staying fixed. */
-    .page-toolbar{
-      position:static;
-      padding:6px 10px;
-      font-size:10.5px;
-    }
-    .reader-scroll{ padding-top:8px; }
   }

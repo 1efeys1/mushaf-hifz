@@ -17,15 +17,17 @@
 <header class="topbar">
   <button class="chip" id="toggleSidebar" title="Daftar surah">☰ <span class="btn-label">Surah</span></button>
   <div class="brand">
-    <span class="ar">مُصْحَفُ الْحِفْظ</span>
+    <span class="ar">مُصْحَفُ الْحِفْظِ</span>
     <span class="lat">Mushaf Hifz</span>
   </div>
+  <span id="surahStatus" class="topbar-status"></span>
   <div class="nav-controls">
     <div class="page-jump">
       <span class="pj-label">Halaman</span>
       <input type="number" id="pageInput" min="1" max="604" value="1">
       <span class="pj-label">/ 604</span>
     </div>
+    <button class="chip" id="toggleSettings" title="Pengaturan">⚙</button>
   </div>
 </header>
 
@@ -47,6 +49,58 @@
       <div class="ar">جَارٍ التَحْمِيل…</div>
     </div>
   </main>
+
+  <aside class="settings-panel" id="settingsPanel">
+    <div class="settings-head">
+      <span>Pengaturan</span>
+      <button class="settings-close" id="settingsClose" type="button" title="Tutup">✕</button>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Tampilan</div>
+      <div class="segmented" id="viewBySegmented">
+        <button type="button" id="viewByMushaf">Mushaf</button>
+        <button type="button" id="viewByAyat">Per Ayat</button>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Konten</div>
+      <label class="check-row"><input type="checkbox" id="contentArabic"><span>Arab</span></label>
+      <label class="check-row"><input type="checkbox" id="contentTranslation"><span>Terjemahan</span></label>
+      <label class="check-row"><input type="checkbox" id="contentWordGloss"><span>Terjemahan per kata</span></label>
+      <label class="check-row"><input type="checkbox" id="contentTajweed"><span>Tajwid</span></label>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Ukuran</div>
+      <div class="slider-row">
+        <span class="slider-name">Arab</span>
+        <input type="range" id="arabicSizeSlider" min="0.7" max="1.8" step="0.1" value="1">
+        <span class="slider-value" id="fontSizeLabel">100%</span>
+      </div>
+      <div class="slider-row">
+        <span class="slider-name">Terjemahan</span>
+        <input type="range" id="translationSizeSlider" min="0.7" max="1.8" step="0.1" value="1">
+        <span class="slider-value" id="translationSizeLabel">100%</span>
+      </div>
+    </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Hint kata</div>
+      <label class="check-row slider-row">
+        <span class="slider-name">Kata pertama tiap ayat</span>
+        <select id="hintWordSelect">
+          <option value="0">Off</option>
+          <option value="1">1</option>
+          <option value="2">2</option>
+          <option value="3">3</option>
+          <option value="4">4</option>
+          <option value="5">5</option>
+        </select>
+      </label>
+    </div>
+  </aside>
 </div>
 
 <script src="surah-meta.js"></script>

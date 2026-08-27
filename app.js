@@ -90,21 +90,28 @@
   var translationFontScale = loadTranslationFontScale();
 
   // syncs the toolbar/body to the current viewMode/ayahFontScale without changing either —
-  // called after buildReaderShell() creates the controls, and from the setters below.
+  // called after wiring the settings panel, and from the setters below.
   function applyViewModeUI(){
     document.body.classList.toggle("ayah-mode", viewMode === "ayah");
-    var toggleBtn = document.getElementById("viewModeToggle");
-    if (toggleBtn) toggleBtn.textContent = viewMode === "ayah" ? "📖 Mushaf" : "📝 Per Ayat";
+    var m = document.getElementById("viewByMushaf"), a = document.getElementById("viewByAyat");
+    if (m && a){
+      m.classList.toggle("active", viewMode === "mushaf");
+      a.classList.toggle("active", viewMode === "ayah");
+    }
   }
 
   function applyAyahFontScale(){
     document.documentElement.style.setProperty("--ayah-font-scale", ayahFontScale.toFixed(2));
+    var slider = document.getElementById("arabicSizeSlider");
+    if (slider) slider.value = String(ayahFontScale);
     var label = document.getElementById("fontSizeLabel");
     if (label) label.textContent = Math.round(ayahFontScale * 100) + "%";
   }
 
   function applyTranslationFontScale(){
     document.documentElement.style.setProperty("--translation-font-scale", translationFontScale.toFixed(2));
+    var slider = document.getElementById("translationSizeSlider");
+    if (slider) slider.value = String(translationFontScale);
     var label = document.getElementById("translationSizeLabel");
     if (label) label.textContent = Math.round(translationFontScale * 100) + "%";
   }
@@ -131,32 +138,59 @@
     applyTranslationFontScale();
   }
 
-  // ---------------- tajweed: color-code the Arabic by recitation rule ----------------
-  // Data comes as inline tags in text_uthmani_tajweed (see quran-api.js) — e.g.
-  // "<rule class=ham_wasl>ٱ</rule>للَّهِ", tags may nest (custom-alef-maksora inside
-  // madda_normal). Words are ALWAYS rendered with the parsed .tj spans; whether those spans
-  // actually take color is a single body class, so toggling is instant and never re-renders
-  // (which would risk disturbing the reveal cursor mid-page).
-  var TAJWEED_KEY = "mushafHifzTajweed";
+  // ---------------- content prefs: what's visible on the page ----------------
+  // All render-time visibility toggles (arabic words, translations, word glosses, tajweed
+  // colors) are pure body classes — switching one never re-renders, so the reveal cursor is
+  // never disturbed. hide-arabic only has any effect in the ayah view (.aw-ar only exists
+  // there); the printed mushaf without Arabic would be pointless, so it ignores it.
+  var CONTENT_PREFS_KEY = "mushafHifzContentPrefs";
+  var LEGACY_TAJWEED_KEY = "mushafHifzTajweed"; // pre-settings-panel single toggle — migrated once
 
-  function loadTajweedEnabled(){
-    try{ return localStorage.getItem(TAJWEED_KEY) === "on"; } catch(e){ return false; }
+  function loadContentPrefs(){
+    var prefs = { arabic: true, translation: true, wordGloss: true, tajweed: false };
+    try{
+      var raw = localStorage.getItem(CONTENT_PREFS_KEY);
+      if (raw){
+        var p = JSON.parse(raw);
+        if (p && typeof p === "object"){
+          ["arabic","translation","wordGloss","tajweed"].forEach(function(k){
+            if (typeof p[k] === "boolean") prefs[k] = p[k];
+          });
+        }
+      } else {
+        var legacy = localStorage.getItem(LEGACY_TAJWEED_KEY);
+        if (legacy !== null) prefs.tajweed = legacy === "on";
+      }
+    } catch(e){ /* storage unavailable — defaults */ }
+    return prefs;
   }
 
-  var tajweedEnabled = loadTajweedEnabled();
+  var contentPrefs = loadContentPrefs();
 
-  function applyTajweedUI(){
-    document.body.classList.toggle("tajweed-on", tajweedEnabled);
-    var cb = document.getElementById("tajweedToggle");
-    if (cb) cb.checked = tajweedEnabled;
+  function saveContentPrefs(){
+    try{ localStorage.setItem(CONTENT_PREFS_KEY, JSON.stringify(contentPrefs)); } catch(e){ /* just won't persist */ }
   }
 
-  function setTajweedEnabled(on){
-    tajweedEnabled = !!on;
-    try{ localStorage.setItem(TAJWEED_KEY, tajweedEnabled ? "on" : "off"); } catch(e){ /* storage unavailable — just won't persist */ }
-    applyTajweedUI();
+  function applyContentPrefsUI(){
+    document.body.classList.toggle("tajweed-on", contentPrefs.tajweed);
+    document.body.classList.toggle("hide-arabic", !contentPrefs.arabic);
+    document.body.classList.toggle("hide-translation", !contentPrefs.translation);
+    document.body.classList.toggle("hide-word-gloss", !contentPrefs.wordGloss);
+    var ids = { contentArabic: "arabic", contentTranslation: "translation", contentWordGloss: "wordGloss", contentTajweed: "tajweed" };
+    Object.keys(ids).forEach(function(id){
+      var cb = document.getElementById(id);
+      if (cb) cb.checked = contentPrefs[ids[id]];
+    });
   }
 
+  function setContentPref(key, on){
+    if (!(key in contentPrefs)) return;
+    contentPrefs[key] = !!on;
+    saveContentPrefs();
+    applyContentPrefsUI();
+  }
+
+  // ---------------- tajweed markup parsing (data → colored spans) ----------------
   // Only classes we have a color for become spans (see .tj rules in style.css); anything else
   // the API might introduce (custom-*) keeps its text, uncolored.
   var TAJWEED_RULES = {
@@ -564,37 +598,10 @@
   var readerScroll = null; // the element that actually scrolls (set in buildReaderShell)
 
   function buildReaderShell(){
-    // .page-toolbar and .reveal-controls are siblings of .reader-scroll here, not children of
-    // it — both are position:fixed (see style.css), so they stay put while .reader-scroll
-    // scrolls/zooms/pans underneath them instead of scrolling away with the page content.
+    // .reveal-controls is a sibling of .reader-scroll (position:fixed, see style.css) so it
+    // stays put while .reader-scroll scrolls/zooms/pans underneath it. All other controls
+    // (view mode, content toggles, sizes, hint words) live in the right settings panel.
     reader.innerHTML =
-      '<div class="page-toolbar">' +
-        '<span id="surahStatus"></span>' +
-        '<div class="toolbar-actions">' +
-          '<button id="viewModeToggle" class="mode-toggle" type="button" title="Ganti tampilan"></button>' +
-          '<label class="hint-control" title="Warna aturan tajwid"><input type="checkbox" id="tajweedToggle"> Tajwid</label>' +
-          '<label class="hint-control" title="Selalu tampilkan N kata pertama tiap ayat">' +
-            '💡 <select id="hintWordSelect">' +
-              '<option value="0">Off</option>' +
-              '<option value="1">1</option>' +
-              '<option value="2">2</option>' +
-              '<option value="3">3</option>' +
-              '<option value="4">4</option>' +
-              '<option value="5">5</option>' +
-            '</select>' +
-          '</label>' +
-          '<div class="font-size-control" title="Ukuran font Arab">' +
-            '<button id="fontDec" type="button">A−</button>' +
-            '<span id="fontSizeLabel"></span>' +
-            '<button id="fontInc" type="button">A+</button>' +
-          '</div>' +
-          '<div class="font-size-control" title="Ukuran terjemahan">' +
-            '<button id="translationDec" type="button">T−</button>' +
-            '<span id="translationSizeLabel"></span>' +
-            '<button id="translationInc" type="button">T+</button>' +
-          '</div>' +
-        '</div>' +
-      '</div>' +
       '<div class="reader-scroll" id="readerScroll">' +
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
@@ -610,36 +617,6 @@
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
     wirePinchZoom(readerScroll);
-
-    var hintWordSelect = document.getElementById("hintWordSelect");
-    hintWordSelect.value = String(hintWordCount);
-    hintWordSelect.addEventListener("change", function(){
-      setHintWordCount(parseInt(hintWordSelect.value, 10) || 0);
-    });
-
-    document.getElementById("tajweedToggle").addEventListener("change", function(e){
-      setTajweedEnabled(e.target.checked);
-    });
-    applyTajweedUI();
-
-    document.getElementById("viewModeToggle").addEventListener("click", function(){
-      setViewMode(viewMode === "ayah" ? "mushaf" : "ayah");
-    });
-    document.getElementById("fontDec").addEventListener("click", function(){
-      setAyahFontScale(ayahFontScale - AYAH_FONT_SCALE_STEP);
-    });
-    document.getElementById("fontInc").addEventListener("click", function(){
-      setAyahFontScale(ayahFontScale + AYAH_FONT_SCALE_STEP);
-    });
-    document.getElementById("translationDec").addEventListener("click", function(){
-      setTranslationFontScale(translationFontScale - AYAH_FONT_SCALE_STEP);
-    });
-    document.getElementById("translationInc").addEventListener("click", function(){
-      setTranslationFontScale(translationFontScale + AYAH_FONT_SCALE_STEP);
-    });
-    applyViewModeUI();
-    applyAyahFontScale();
-    applyTranslationFontScale();
 
     document.getElementById("revealAll").addEventListener("click", function(){
       pageCursor[currentPage] = countPageWords(currentPage);
@@ -658,19 +635,52 @@
     syncFixedBarOffsets();
   }
 
-  // Measures the actual rendered height of the app header and the two fixed reader bars, and
+  // ---------------- settings panel (right edge) ----------------
+  function wireSettingsPanel(){
+    document.getElementById("viewByMushaf").addEventListener("click", function(){ setViewMode("mushaf"); });
+    document.getElementById("viewByAyat").addEventListener("click", function(){ setViewMode("ayah"); });
+
+    document.getElementById("contentArabic").addEventListener("change", function(e){ setContentPref("arabic", e.target.checked); });
+    document.getElementById("contentTranslation").addEventListener("change", function(e){ setContentPref("translation", e.target.checked); });
+    document.getElementById("contentWordGloss").addEventListener("change", function(e){ setContentPref("wordGloss", e.target.checked); });
+    document.getElementById("contentTajweed").addEventListener("change", function(e){ setContentPref("tajweed", e.target.checked); });
+
+    document.getElementById("arabicSizeSlider").addEventListener("input", function(e){
+      setAyahFontScale(parseFloat(e.target.value));
+    });
+    document.getElementById("translationSizeSlider").addEventListener("input", function(e){
+      setTranslationFontScale(parseFloat(e.target.value));
+    });
+
+    var hintWordSelect = document.getElementById("hintWordSelect");
+    hintWordSelect.value = String(hintWordCount);
+    hintWordSelect.addEventListener("change", function(){
+      setHintWordCount(parseInt(hintWordSelect.value, 10) || 0);
+    });
+
+    var settingsPanel = document.getElementById("settingsPanel");
+    document.getElementById("toggleSettings").addEventListener("click", function(){
+      settingsPanel.classList.toggle("open");
+    });
+    document.getElementById("settingsClose").addEventListener("click", function(){
+      settingsPanel.classList.remove("open");
+    });
+
+    applyViewModeUI();
+    applyAyahFontScale();
+    applyTranslationFontScale();
+    applyContentPrefsUI();
+  }
+
+  // Measures the actual rendered height of the app header and the fixed footer bar, and
   // publishes them as CSS vars so .reader-scroll can pad itself by exactly that much (see
-  // style.css) — heights vary by breakpoint and by which toolbar controls are visible for the
-  // current view mode, so this is measured rather than hardcoded. The +buffer is breathing
-  // room between the fixed bar and the page content, replacing what used to be the toolbar's
-  // own margin-bottom / the scroll container's padding before these became position:fixed.
+  // style.css) — heights vary by breakpoint, so this is measured rather than hardcoded. The
+  // +buffer is breathing room between the fixed bar and the page content.
   function syncFixedBarOffsets(){
     var headerEl = document.querySelector("header.topbar");
-    var toolbarEl = document.querySelector(".page-toolbar");
     var footerEl = document.querySelector(".reveal-controls");
-    if (!headerEl || !toolbarEl || !footerEl) return;
+    if (!headerEl || !footerEl) return;
     document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
-    document.documentElement.style.setProperty("--toolbar-h", (toolbarEl.offsetHeight + 20) + "px");
     document.documentElement.style.setProperty("--footer-h", (footerEl.offsetHeight + 16) + "px");
   }
 
@@ -1031,8 +1041,13 @@
   // Clicking anywhere outside the sidebar closes it — same as tapping ☰ again. On mobile the
   // sidebar is a fixed overlay (the dimmed reader behind it counts as "outside" too); on
   // desktop/landscape it's in-flow, but the same click-anywhere-else behavior was requested
-  // there too (GitHub issue #3).
+  // there too (GitHub issue #3). The settings panel closes the same way.
   document.addEventListener("click", function(e){
+    var settingsPanel = document.getElementById("settingsPanel");
+    if (settingsPanel && settingsPanel.classList.contains("open") &&
+        !settingsPanel.contains(e.target) && !document.getElementById("toggleSettings").contains(e.target)){
+      settingsPanel.classList.remove("open");
+    }
     if (shell.classList.contains("collapsed")) return;
     var sidebarEl = document.getElementById("sidebar");
     var toggleBtn = document.getElementById("toggleSidebar");
@@ -1139,6 +1154,7 @@
     renderSidebar();
     renderBookmarkList();
     buildReaderShell();
+    wireSettingsPanel();
     renderPage(1);
   }
 
