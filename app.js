@@ -816,6 +816,15 @@
   }
 
   // ---------------- sidebar ----------------
+  // transliteration folding — strips separators (incl. alquran.cloud's curly apostrophes,
+  // "Al-A’raf"), collapses doubled vowels ("Al-A'raaf" → "alaraf") and merges e→i, o→u
+  // ("Yaseen" → "yasin"). Both the dataset string and the query fold, so the aggressive
+  // normalization stays symmetric and safe.
+  function foldLatin(s){
+    return s.toLowerCase().replace(/[\s\-\u2018\u2019']/g, "")
+      .replace(/([aeiou])\1+/g, "$1").replace(/e/g, "i").replace(/o/g, "u");
+  }
+
   function renderSidebar(){
     var container = document.getElementById("surahList");
     container.innerHTML = "";
@@ -825,9 +834,11 @@
       item.className = "surah-item";
       item.dataset.number = number;
       item.dataset.search = (number + " " + nameAr + " " + nameEn + " " + nameTranslation).toLowerCase();
-      // separator-squashed variant — transliteration lookups ("yasin" → "Ya-Sin",
-      // "almulk" → "Al-Mulk") shouldn't depend on the dataset's hyphenation
-      item.dataset.searchAlt = item.dataset.search.replace(/[\s\-']/g, "");
+      // pre-folded matching form — see foldLatin
+      item.dataset.searchAlt = foldLatin(item.dataset.search);
+      // folded LATIN NAME ONLY (no number/Arabic prefix) — the exact-match rank below
+      // compares against this, since alt still starts with "7سورة…"
+      item.dataset.searchName = foldLatin(nameEn);
       item.innerHTML =
         '<div class="surah-num">' + number + '</div>' +
         '<div class="surah-info">' +
@@ -847,16 +858,24 @@
 
   document.getElementById("surahSearch").addEventListener("input", function(e){
     var q = e.target.value.trim().toLowerCase();
-    // match the raw string, the separator-squashed form, and — for the dataset's
-    // "al-baqara"-style names — the query minus a trailing h ("baqarah" → "baqara")
-    var qAlt = q.replace(/[\s\-']/g, "");
-    var qNoH = qAlt.replace(/h$/, "");
+    var qFold = foldLatin(q);
+    // trailing-letter variants — the dataset's "al-baqara"/"al-kahf"-style names vs the
+    // "baqarah"/"kahfi" spellings users actually type
+    var variants = [qFold];
+    if (/[hi]$/.test(qFold) && qFold.length > 2) variants.push(qFold.slice(0, -1));
+    var hits = [], exacts = [];
     document.querySelectorAll(".surah-item").forEach(function(el){
-      var ds = el.dataset.search, alt = el.dataset.searchAlt;
-      var hit = ds.indexOf(q) !== -1 ||
-        (qAlt && (alt.indexOf(qAlt) !== -1 || (qNoH && qNoH !== qAlt && alt.indexOf(qNoH) !== -1)));
-      el.style.display = hit ? "flex" : "none";
+      var alt = el.dataset.searchAlt;
+      var hit = el.dataset.search.indexOf(q) !== -1 ||
+        (qFold && alt.indexOf(qFold) !== -1) ||
+        variants.slice(1).some(function(v){ return alt.indexOf(v) !== -1; });
+      if (!hit){ el.style.display = "none"; return; }
+      hits.push(el);
+      // "annas" must land on An-Nas, not the substring-earlier An-Nasr — an exact folded
+      // name match outranks substring ones whenever any exist
+      if (variants.indexOf(el.dataset.searchName) !== -1) exacts.push(el);
     });
+    (exacts.length ? exacts : hits).forEach(function(el){ el.style.display = "flex"; });
     refreshAyahJumpTarget();
   });
 
@@ -873,16 +892,19 @@
   if (!ayahJumpAvailable) document.getElementById("ayahJumpRow").style.display = "none";
 
   function ayahJumpTargetSurah(){
+    // empty search → the surah open on the page (not "first list item": an unfiltered
+    // list always starts at Al-Fatihah, which made the label show 1. Al-Faatihah while
+    // reading Al-A'raaf — exactly the stale-target report)
+    var q = document.getElementById("surahSearch").value.trim();
+    if (!q){
+      var active = document.querySelector(".surah-item.active");
+      return active ? +active.dataset.number : null;
+    }
     var first = null;
     document.querySelectorAll(".surah-item").forEach(function(el){
-      if (el.style.display !== "none"){
-        if (first === null) first = +el.dataset.number;
-      }
+      if (el.style.display !== "none" && first === null) first = +el.dataset.number;
     });
-    if (first !== null) return first;
-    if (document.getElementById("surahSearch").value.trim()) return null;
-    var active = document.querySelector(".surah-item.active");
-    return active ? +active.dataset.number : null;
+    return first; // null when the filter matches nothing — no silent wrong target
   }
 
   function refreshAyahJumpTarget(){
