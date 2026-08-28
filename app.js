@@ -361,7 +361,7 @@
     }
 
     wireKaraokeTick();
-    var state = { surah: pair[0], ayah: pair[1], ordinalEndIdx: ordinalEndIdx, maxOrdinal: maxOrdinal, applied: applied, starts: null };
+    var state = { surah: pair[0], ayah: pair[1], page: currentPage, ordinalEndIdx: ordinalEndIdx, maxOrdinal: maxOrdinal, applied: applied, starts: null };
     karaoke = state;
     loadKaraokeTimings(pair[0]).then(function(timings){
       if (karaoke !== state) return; // playback moved on while fetching
@@ -377,18 +377,25 @@
     karaokeTickWired = true;
     Reciter._el().addEventListener("timeupdate", function(){
       if (!karaoke || !karaoke.starts) return;
+      if (karaoke.page !== currentPage) return; // user flipped the page — these data-idx values belong to another page
       var t = this.currentTime * 1000;
       var target = 0;
       while (target < karaoke.starts.length && karaoke.starts[target] <= t) target++;
       if (target <= karaoke.applied) return;
       karaoke.applied = target;
-      var ord = Math.min(target, karaoke.maxOrdinal);
-      var idx = karaoke.ordinalEndIdx[ord];
-      if (idx === undefined) return;
-      if ((pageCursor[currentPage] || 0) < idx + 1){
-        pageCursor[currentPage] = idx + 1;
-        renderPage(currentPage, true);
-      }
+      var endIdx = karaoke.ordinalEndIdx[Math.min(target, karaoke.maxOrdinal)];
+      if (endIdx === undefined) return;
+      var cursor = pageCursor[currentPage] || 0;
+      if (cursor >= endIdx + 1) return; // the user already revealed past this word
+      // reveal IN PLACE — a full renderPage() per word rebuilt the page's innerHTML and
+      // made everything on it (previous ayat's gold wash included) blink on every word.
+      // The badge/sajda spans share the last word's data-idx, so they light with it —
+      // exactly the renderers' own numRevealed rule.
+      document.getElementById("mushafPage").querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+        var idx = +el.dataset.idx;
+        if (idx >= cursor && idx <= endIdx) el.classList.add("revealed");
+      });
+      pageCursor[currentPage] = endIdx + 1;
     });
   }
 
@@ -511,8 +518,14 @@
 
     surahSel.addEventListener("change", function(){
       audioPrefs.surah = parseInt(surahSel.value, 10) || 1;
+      // a fresh surah pick means the whole surah, not a clamped leftover from the last one
+      audioPrefs.from = 1;
+      audioPrefs.to = SURAH_META[audioPrefs.surah - 1][5];
       clampRange();
       saveAudioPrefs();
+      // the reader follows the pick — the panel and the page must tell the same story
+      // (guarded: never yank the page out from under a running range)
+      if (!Reciter.rangeActive()) goToPage(SURAH_META[audioPrefs.surah - 1][6]);
     });
     fromInput.addEventListener("change", function(){
       audioPrefs.from = parseInt(fromInput.value, 10) || 1;
@@ -544,21 +557,33 @@
     Reciter.setSpeed(audioPrefs.speed);
 
     document.getElementById("rangePlay").addEventListener("click", function(){
-      Reciter.startRange(audioPrefs.surah, audioPrefs.from, audioPrefs.to, audioPrefs.repeat,
-        function(ayah, rep){
-          setPlayingAyah([audioPrefs.surah, ayah]);
-          scrollPlayingAyahIntoView();
-          rangeStatus(audioPrefs.surah + ":" + ayah + " · ulangan " + rep + "/" + audioPrefs.repeat);
-        },
-        function(){
-          setPlayingAyah(null);
-          rangeStatus("selesai");
-        },
-        function(){
-          setPlayingAyah(null);
-          rangeStatus("audio gagal — berhenti");
-          showAudioNotice("Gagal memuat audio");
-        });
+      function start(){
+        Reciter.startRange(audioPrefs.surah, audioPrefs.from, audioPrefs.to, audioPrefs.repeat,
+          function(ayah, rep){
+            setPlayingAyah([audioPrefs.surah, ayah]);
+            scrollPlayingAyahIntoView();
+            rangeStatus(audioPrefs.surah + ":" + ayah + " · ulangan " + rep + "/" + audioPrefs.repeat);
+          },
+          function(){
+            setPlayingAyah(null);
+            rangeStatus("selesai");
+          },
+          function(){
+            setPlayingAyah(null);
+            rangeStatus("audio gagal — berhenti");
+            showAudioNotice("Gagal memuat audio");
+          });
+      }
+      // a range whose first ayah isn't on the open page would play invisibly (highlight,
+      // karaoke and scroll-follow all key off the CURRENT page) — take the reader there
+      // first and start once the page data is in, so the very first ayah syncs too
+      var startPage = ayahJumpAvailable ? AYAH_PAGE[audioPrefs.surah - 1][audioPrefs.from - 1] : 0;
+      if (startPage && startPage !== currentPage){
+        goToPage(startPage);
+        loadPageLines(startPage).then(function(){ if (currentPage === startPage) start(); });
+      } else {
+        start();
+      }
     });
     document.getElementById("rangePause").addEventListener("click", function(){
       if (Reciter.rangePaused()){ Reciter.resumeRange(); rangeStatus("lanjut…"); }
