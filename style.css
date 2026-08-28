@@ -562,6 +562,11 @@
     line-height:1.25;
     color:var(--ink-soft);
     max-width:6.5em;
+    /* the line's white-space:nowrap would inherit here and stop max-width/overflow-wrap
+       from ever wrapping — long glosses then overflowed their cell onto the neighbor
+       (issue #17 follow-up). Normal wrapping keeps them inside the cap, growing the cell
+       downward instead. */
+    white-space:normal;
     overflow-wrap:break-word;
     margin-top:.35em;
     cursor:pointer;
