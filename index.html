@@ -114,6 +114,25 @@
     </button>
     <div class="audio-panel" id="audioPanel">
       <label class="check-row"><input type="checkbox" id="tapPlayToggle"><span>Putar audio saat ayat dibuka</span></label>
+      <div class="ab-row">
+        <select id="rangeSurah" title="Surah"></select>
+        <span class="ab-field">ayat</span>
+        <input type="number" id="rangeFrom" min="1" title="Dari ayat">
+        <span class="ab-field">–</span>
+        <input type="number" id="rangeTo" min="1" title="Sampai ayat">
+      </div>
+      <div class="ab-row">
+        <span class="ab-field">ulang</span>
+        <select id="rangeRepeat" title="Ulang per ayat"></select>
+        <span class="ab-field">speed</span>
+        <select id="rangeSpeed" title="Kecepatan"></select>
+      </div>
+      <div class="ab-row ab-controls">
+        <button id="rangePlay" type="button" title="Putar rentang">&#9654; Putar</button>
+        <button id="rangePause" type="button" title="Jeda / lanjut">&#10073;&#10073;</button>
+        <button id="rangeStop" type="button" title="Berhenti">&#9724;</button>
+        <span class="ab-status" id="rangeStatus"></span>
+      </div>
       <div class="ab-credit">Reciter: Mishary Rashid Alafasy &middot; Audio kata: CDN Quran.com</div>
     </div>
   </div>

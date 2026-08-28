@@ -476,6 +476,45 @@
     font-size:13px;
   }
   .audio-bar.open .audio-panel{ display:block; }
+  .ab-row{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:8px;
+    flex-wrap:wrap;
+  }
+  .ab-field{
+    font-size:11.5px;
+    color:#8ea184;
+  }
+  .ab-row select, .ab-row input[type="number"]{
+    background:#0f2018;
+    border:1px solid #3c5947;
+    color:#EFE6C9;
+    border-radius:6px;
+    padding:4px 6px;
+    font-size:12px;
+    max-width:100%;
+  }
+  .ab-row input[type="number"]{ width:3.6em; text-align:center; }
+  .ab-controls button{
+    background:#fffef9;
+    border:1px solid var(--gold);
+    color:var(--green-deep);
+    border-radius:999px;
+    padding:5px 12px;
+    font-size:12px;
+    font-family:'Work Sans',sans-serif;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .ab-controls button:hover{ background:var(--veil); }
+  .ab-status{
+    font-size:11.5px;
+    color:var(--gold-soft);
+    margin-left:2px;
+    white-space:nowrap;
+  }
   .ab-credit{
     font-size:10.5px;
     color:#7f8f7c;

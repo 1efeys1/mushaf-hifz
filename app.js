@@ -196,12 +196,20 @@
   // single-word reveal (word tap / Space / ⎵) plays that word, a whole-ayah reveal (⏭ 1 Ayat
   // or the ayah-number badge) plays the full ayah; Backspace never plays (it hides).
   var AUDIO_PREFS_KEY = "mushafHifzAudioPrefs";
+  var RANGE_REPEAT_MAX = 10;
 
   function loadAudioPrefs(){
-    var prefs = { tapPlay: true };
+    var prefs = { tapPlay: true, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
     try{
       var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
-      if (raw && typeof raw === "object" && typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
+      if (raw && typeof raw === "object"){
+        if (typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
+        if (Number.isInteger(raw.surah) && raw.surah >= 1 && raw.surah <= 114) prefs.surah = raw.surah;
+        if (Number.isInteger(raw.from) && raw.from >= 1) prefs.from = raw.from;
+        if (Number.isInteger(raw.to) && raw.to >= 1) prefs.to = raw.to;
+        if (Number.isInteger(raw.repeat) && raw.repeat >= 1 && raw.repeat <= RANGE_REPEAT_MAX) prefs.repeat = raw.repeat;
+        if (raw.speed >= 0.5 && raw.speed <= 2) prefs.speed = raw.speed;
+      }
     } catch(e){ /* storage unavailable — defaults */ }
     return prefs;
   }
@@ -270,6 +278,88 @@
       if (!audioPrefs.tapPlay) Reciter.stop();
     });
     applyTapPlayUI();
+    wireRangeControls();
+  }
+
+  function rangeStatus(text){
+    document.getElementById("rangeStatus").textContent = text;
+  }
+
+  function wireRangeControls(){
+    var surahSel = document.getElementById("rangeSurah");
+    var fromInput = document.getElementById("rangeFrom");
+    var toInput = document.getElementById("rangeTo");
+    var repeatSel = document.getElementById("rangeRepeat");
+    var speedSel = document.getElementById("rangeSpeed");
+
+    SURAH_META.forEach(function(s){
+      var opt = document.createElement("option");
+      opt.value = String(s[0]);
+      opt.textContent = s[0] + ". " + s[2];
+      surahSel.appendChild(opt);
+    });
+    for (var r = 1; r <= RANGE_REPEAT_MAX; r++){
+      repeatSel.appendChild(new Option(String(r), String(r)));
+    }
+    [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].forEach(function(sp){
+      speedSel.appendChild(new Option(String(sp) + "×", String(sp)));
+    });
+
+    // clamp helper — from/to must stay within the chosen surah's ayah count, from <= to
+    function clampRange(){
+      var count = SURAH_META[audioPrefs.surah - 1][5];
+      audioPrefs.from = Math.min(Math.max(1, audioPrefs.from), count);
+      audioPrefs.to = Math.min(Math.max(audioPrefs.from, audioPrefs.to), count);
+      fromInput.max = String(count);
+      toInput.max = String(count);
+      fromInput.value = String(audioPrefs.from);
+      toInput.value = String(audioPrefs.to);
+    }
+
+    surahSel.addEventListener("change", function(){
+      audioPrefs.surah = parseInt(surahSel.value, 10) || 1;
+      clampRange();
+      saveAudioPrefs();
+    });
+    fromInput.addEventListener("change", function(){
+      audioPrefs.from = parseInt(fromInput.value, 10) || 1;
+      clampRange();
+      saveAudioPrefs();
+    });
+    toInput.addEventListener("change", function(){
+      audioPrefs.to = parseInt(toInput.value, 10) || audioPrefs.from;
+      clampRange();
+      saveAudioPrefs();
+    });
+    repeatSel.addEventListener("change", function(){
+      audioPrefs.repeat = parseInt(repeatSel.value, 10) || 1;
+      saveAudioPrefs();
+    });
+    speedSel.addEventListener("change", function(){
+      audioPrefs.speed = parseFloat(speedSel.value) || 1;
+      Reciter.setSpeed(audioPrefs.speed);
+      saveAudioPrefs();
+    });
+
+    surahSel.value = String(audioPrefs.surah);
+    repeatSel.value = String(audioPrefs.repeat);
+    speedSel.value = String(audioPrefs.speed);
+    clampRange();
+    Reciter.setSpeed(audioPrefs.speed);
+
+    document.getElementById("rangePlay").addEventListener("click", function(){
+      Reciter.startRange(audioPrefs.surah, audioPrefs.from, audioPrefs.to, audioPrefs.repeat,
+        function(ayah, rep){ rangeStatus(audioPrefs.surah + ":" + ayah + " · ulangan " + rep + "/" + audioPrefs.repeat); },
+        function(){ rangeStatus("selesai"); });
+    });
+    document.getElementById("rangePause").addEventListener("click", function(){
+      if (Reciter.rangePaused()){ Reciter.resumeRange(); rangeStatus("lanjut…"); }
+      else if (Reciter.rangeActive()){ Reciter.pauseRange(); rangeStatus("jeda"); }
+    });
+    document.getElementById("rangeStop").addEventListener("click", function(){
+      Reciter.stopRange();
+      rangeStatus("");
+    });
   }
 
   // ---------------- tajweed markup parsing (data → colored spans) ----------------

@@ -67,17 +67,29 @@
   }
 
   var speed = 1;
+  var rangeQueue = null; // active range playback: {surah, from, to, repeat, ayah, rep, token, paused}
+
+  // prefetch helper — warm the browser's HTTP cache for the next ayah so range playback
+  // doesn't stall between ayat on a slow connection
+  function preload(url){
+    var pre = new Audio();
+    pre.preload = "auto";
+    pre.src = url;
+  }
 
   window.Reciter = {
     // full-ayah playback (Alafasy)
     playAyah: function(surah, ayah, onEnd){
+      rangeQueue = null; // a tap-play always interrupts an active range
       return playUrl(ayahAudioUrl(surah, ayah), onEnd);
     },
     // single-word playback (word-by-word CDN set)
     playWord: function(surah, ayah, wordOrdinal, onEnd){
+      rangeQueue = null;
       return playUrl(wordAudioUrl(surah, ayah, wordOrdinal), onEnd);
     },
     stop: function(){
+      rangeQueue = null;
       playToken++;
       if (el){ el.pause(); el.removeAttribute("src"); el.load(); }
     },
@@ -86,9 +98,51 @@
       if (el) el.playbackRate = rate;
     },
     getSpeed: function(){ return speed; },
+
+    // ---- range playback: ayahs from..to of one surah, each repeated `repeat` times ----
+    // onProgress(ayah, rep) fires when an ayah repetition starts; onDone() when the whole
+    // range finishes (or is stopped). Advances on natural end AND on error (skip broken).
+    startRange: function(surah, from, to, repeat, onProgress, onDone){
+      playToken++;
+      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false };
+      var queue = rangeQueue;
+
+      function step(){
+        if (rangeQueue !== queue) return;
+        onProgress(queue.ayah, queue.rep);
+        var nextIsRepeat = queue.rep < queue.repeat;
+        var nextIsAyah = queue.ayah < queue.to;
+        if (nextIsRepeat || nextIsAyah) preload(ayahAudioUrl(surah, nextIsRepeat ? queue.ayah : queue.ayah + 1));
+        playUrl(ayahAudioUrl(surah, queue.ayah), function(){
+          if (rangeQueue !== queue) return;
+          if (queue.rep < queue.repeat){ queue.rep++; }
+          else if (queue.ayah < queue.to){ queue.ayah++; queue.rep = 1; }
+          else { rangeQueue = null; onDone(); return; }
+          step();
+        });
+      }
+
+      step();
+      return queue;
+    },
+    rangeActive: function(){ return !!rangeQueue; },
+    rangePaused: function(){ return !!(rangeQueue && rangeQueue.paused); },
+    pauseRange: function(){
+      if (rangeQueue && el){ rangeQueue.paused = true; el.pause(); }
+    },
+    resumeRange: function(){
+      if (rangeQueue && rangeQueue.paused){ rangeQueue.paused = false; el.play().catch(function(){}); }
+    },
+    stopRange: function(){
+      if (!rangeQueue) return;
+      rangeQueue = null;
+      playToken++;
+      if (el){ el.pause(); el.removeAttribute("src"); el.load(); }
+    },
+
     // test/inspection hooks (used by the browser-tool verification, muted so autoplay
     // policies don't block headless play)
     _el: function(){ return ensureEl(); },
-    _urls: { ayah: ayahAudioUrl, word: wordAudioUrl, global: globalAyahNumber }
+    _urls: { ayah: ayahAudioUrl, word: wordAudioUrl, global: globalAyahNumber, preload: preload }
   };
 })(window);
