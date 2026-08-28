@@ -153,6 +153,42 @@
   }
   .sidebar-head input::placeholder{ color:#7f8f7c; }
 
+  /* "Ayat ke-" jump row — target surah = first search match (or the open page's surah) */
+  .ayah-jump{
+    display:flex;
+    align-items:center;
+    gap:6px;
+    margin-top:8px;
+    font-family:'Work Sans',sans-serif;
+    font-size:12.5px;
+    color:#9fae97;
+  }
+  .ayah-jump input{
+    width:4.2em;
+    padding:5px 7px;
+    text-align:center;
+  }
+  .ayah-jump button{
+    background:transparent;
+    border:1px solid #345342;
+    color:var(--gold-soft);
+    padding:5px 10px;
+    border-radius:8px;
+    font-size:12.5px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .ayah-jump button:hover{ background:#16301f; border-color:var(--gold-soft); }
+  .aj-target{
+    flex:1;
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    color:#EFE6C9;
+    direction:ltr;
+  }
+
   .sidebar-tabs{
     display:flex;
     gap:6px;
@@ -705,6 +741,11 @@
     background:#C9A64B2E;
     border-radius:8px;
   }
+
+  /* jump-to-ayah arrival flash — stronger than .playing (it must be findable on a busy
+     page), fading out with each element's own background transition when removed */
+  .word.flash, .num.flash, .sajda-tag.flash{ background:#C9A64B66; }
+  .ayah-block.flash{ background:#C9A64B40; border-radius:8px; }
 
   /* ---------- tajweed coloring ----------
      Spans are always in the DOM (parsed from the API's inline rule tags — see app.js); whether

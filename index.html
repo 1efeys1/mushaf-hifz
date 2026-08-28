@@ -44,6 +44,12 @@
         <button class="sidebar-tab" id="tabBookmarks" type="button">Markah <span class="tab-count" id="bookmarkCount"></span></button>
       </div>
       <input type="text" id="surahSearch" placeholder="Cari surah… (nama, nomor)">
+      <div class="ayah-jump" id="ayahJumpRow">
+        <span class="aj-label">Ayat ke-</span>
+        <input type="number" id="ayahJumpInput" min="1" placeholder="—">
+        <button id="ayahJumpBtn" type="button" title="Lompat ke ayat">&#10140;&#xFE0E;</button>
+        <span class="aj-target" id="ayahJumpTarget"></span>
+      </div>
     </div>
     <div class="surah-list" id="surahList"></div>
     <div class="bookmark-list" id="bookmarkList"></div>
@@ -140,6 +146,7 @@
 </div>
 
 <script src="surah-meta.js"></script>
+<script src="ayah-page.js"></script>
 <script src="quran-api.js"></script>
 <script src="page-layout.js"></script>
 <script src="audio.js"></script>
