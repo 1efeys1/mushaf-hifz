@@ -847,9 +847,18 @@
             '<span>' + nameEn + '</span>' +
             '<span class="badge">' + (isMeccan ? "Makkiyah" : "Madaniyah") + '</span>' +
           '</div>' +
-        '</div>';
+        '</div>' +
+        '<button class="surah-go" type="button" title="Langsung ke ayat 1">Go</button>';
       item.addEventListener("click", function(){
         goToPage(firstPage);
+        if (isOverlaySidebarMode()) shell.classList.add("collapsed");
+      });
+      // Go = straight to ayat 1 with the full jump treatment (reveal-through + scroll +
+      // flash); tapping the row itself keeps plain page navigation so the ayat can be
+      // picked afterwards via the "Ayat ke-" row
+      item.querySelector(".surah-go").addEventListener("click", function(ev){
+        ev.stopPropagation();
+        goToAyah(number, 1, firstPage);
         if (isOverlaySidebarMode()) shell.classList.add("collapsed");
       });
       container.appendChild(item);

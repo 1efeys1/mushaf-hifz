@@ -295,6 +295,18 @@
     font-size:11px; color:var(--gold-soft); flex-shrink:0;
   }
   .surah-info{ flex:1; min-width:0; }
+  .surah-go{
+    flex-shrink:0;
+    background:transparent;
+    border:1px solid #345342;
+    color:var(--gold-soft);
+    padding:6px 12px;
+    border-radius:8px;
+    font-size:11.5px;
+    font-family:'Work Sans',sans-serif;
+    cursor:pointer;
+  }
+  .surah-go:hover{ background:#16301f; border-color:var(--gold-soft); }
   .surah-info .name-ar{ font-family:'Amiri Quran',serif; font-size:17px; color:#F1E9C8; }
   .surah-info .name-lat{ font-size:11px; color:#9fae97; display:flex; gap:6px; align-items:center; }
   .badge{
