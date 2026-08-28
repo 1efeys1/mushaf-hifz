@@ -117,10 +117,14 @@
   }
 
   window.QuranApi = {
-    // Promise<verses[]> — from cache if fresh, otherwise fetched and cached.
-    loadRawPage: function(pageNo){
-      var cached = readCache(CACHE_PREFIX, pageNo);
-      if (cached) return Promise.resolve(cached);
+    // Promise<verses[]> — from cache if fresh, otherwise fetched and cached. `force` skips
+    // the cache read and refetches/overwrites — used by app.js's verse-gap self-heal when a
+    // response (live or cached) is missing a verse it should contain.
+    loadRawPage: function(pageNo, force){
+      if (!force){
+        var cached = readCache(CACHE_PREFIX, pageNo);
+        if (cached) return Promise.resolve(cached);
+      }
       return fetchPageWithLookahead(pageNo, fetchRawVerses, CACHE_PREFIX).then(function(verses){
         writeCache(CACHE_PREFIX, pageNo, verses);
         return verses;
@@ -128,9 +132,11 @@
     },
     // Same page, but with word.translation and verse.translations populated — for the "Per
     // Ayat" study view. Separate cache namespace/TTL from loadRawPage (see CACHE_PREFIX_TRANSLATED).
-    loadTranslatedPage: function(pageNo){
-      var cached = readCache(CACHE_PREFIX_TRANSLATED, pageNo);
-      if (cached) return Promise.resolve(cached);
+    loadTranslatedPage: function(pageNo, force){
+      if (!force){
+        var cached = readCache(CACHE_PREFIX_TRANSLATED, pageNo);
+        if (cached) return Promise.resolve(cached);
+      }
       return fetchPageWithLookahead(pageNo, fetchRawTranslatedVerses, CACHE_PREFIX_TRANSLATED).then(function(verses){
         writeCache(CACHE_PREFIX_TRANSLATED, pageNo, verses);
         return verses;

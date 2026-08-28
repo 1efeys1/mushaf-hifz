@@ -272,6 +272,44 @@
     return parts.map(tajweedToHtml);
   }
 
+  // ---------------- page data integrity: verse-gap self-heal ----------------
+  // The by_page endpoint occasionally drops a verse from a response (see NOTES — the 13-gap
+  // scan; GitHub issue #18 was a cached instance of exactly this, missing 69:25 for up to 7
+  // days). The lookahead merge only recovers verses that appear in page N+1's list; a verse
+  // dropped everywhere is unrecoverable at fetch time and gets cached. So after every load
+  // (fresh OR cached), walk the page's verse list in reading order and check it's
+  // contiguous: same surah = ayah+1, surah change only from a surah's last ayah to the next
+  // surah's ayah 1. The page's FIRST verse is exempt (it may legitimately continue the
+  // previous page mid-stream). One forced refetch on a detected gap; if the API itself is
+  // currently missing the verse, the retry's response is accepted as-is.
+  function versesHaveGap(verses){
+    var seen = Object.create(null);
+    var list = [];
+    verses.forEach(function(v){
+      var colon = v.verse_key.indexOf(":");
+      var pair = [+v.verse_key.slice(0, colon), +v.verse_key.slice(colon + 1)];
+      var key = pair[0] + ":" + pair[1];
+      if (!seen[key]){ seen[key] = 1; list.push(pair); }
+    });
+    list.sort(function(a, b){ return a[0] - b[0] || a[1] - b[1]; });
+    for (var i = 1; i < list.length; i++){
+      var prev = list[i - 1], cur = list[i];
+      if (prev[0] === cur[0]){
+        if (cur[1] !== prev[1] + 1) return true;
+      } else if (cur[0] !== prev[0] + 1 || cur[1] !== 1 || prev[1] !== SURAH_META[prev[0] - 1][5]){
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function loadPageWithHeal(pageNo, loader){
+    return loader(pageNo).then(function(verses){
+      if (!versesHaveGap(verses)) return verses;
+      return loader(pageNo, true).catch(function(){ return verses; });
+    });
+  }
+
   // ---------------- live page data: fetched from api.quran.com per page, cached ----------------
   // pageNo -> line array (see page-layout.js), populated once a page finishes loading. Every
   // helper below reads from here instead of a bundled global — the whole mushaf isn't in memory
@@ -282,7 +320,7 @@
   function loadPageLines(pageNo){
     if (pageLinesCache[pageNo]) return Promise.resolve(pageLinesCache[pageNo]);
     if (pageLoadPromises[pageNo]) return pageLoadPromises[pageNo];
-    var promise = QuranApi.loadRawPage(pageNo).then(function(verses){
+    var promise = loadPageWithHeal(pageNo, QuranApi.loadRawPage).then(function(verses){
       var lines = PageLayout.buildPageLines(pageNo, verses, SURAH_META);
       pageLinesCache[pageNo] = lines;
       delete pageLoadPromises[pageNo];
@@ -304,7 +342,7 @@
   function loadPageAyahBlocks(pageNo){
     if (pageAyahBlocksCache[pageNo]) return Promise.resolve(pageAyahBlocksCache[pageNo]);
     if (pageAyahBlockLoadPromises[pageNo]) return pageAyahBlockLoadPromises[pageNo];
-    var promise = QuranApi.loadTranslatedPage(pageNo).then(function(verses){
+    var promise = loadPageWithHeal(pageNo, QuranApi.loadTranslatedPage).then(function(verses){
       var blocks = PageLayout.buildAyahBlocks(pageNo, verses, SURAH_META);
       pageAyahBlocksCache[pageNo] = blocks;
       delete pageAyahBlockLoadPromises[pageNo];
