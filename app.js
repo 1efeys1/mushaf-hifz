@@ -190,6 +190,88 @@
     applyContentPrefsUI();
   }
 
+  // ---------------- audio playback (issue #10) ----------------
+  // All playback goes through the Reciter engine (audio.js — Alafasy per-ayah on the Islamic
+  // Network CDN, per-word on Quran.com's word-by-word set). tap-to-play is a preference: a
+  // single-word reveal (word tap / Space / ⎵) plays that word, a whole-ayah reveal (⏭ 1 Ayat
+  // or the ayah-number badge) plays the full ayah; Backspace never plays (it hides).
+  var AUDIO_PREFS_KEY = "mushafHifzAudioPrefs";
+
+  function loadAudioPrefs(){
+    var prefs = { tapPlay: true };
+    try{
+      var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
+      if (raw && typeof raw === "object" && typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
+    } catch(e){ /* storage unavailable — defaults */ }
+    return prefs;
+  }
+
+  var audioPrefs = loadAudioPrefs();
+
+  function saveAudioPrefs(){
+    try{ localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(audioPrefs)); } catch(e){ /* just won't persist */ }
+  }
+
+  function applyTapPlayUI(){
+    var cb = document.getElementById("tapPlayToggle");
+    if (cb) cb.checked = audioPrefs.tapPlay;
+  }
+
+  function playWordAtIndex(pageNo, idx){
+    if (!audioPrefs.tapPlay) return;
+    var pair = getPageWordAyahList(pageNo)[idx];
+    var ordinal = getPageWordOrdinals(pageNo)[idx];
+    if (pair && ordinal) Reciter.playWord(pair[0], pair[1], ordinal);
+  }
+
+  function playAyahPair(pair){
+    if (!audioPrefs.tapPlay || !pair) return;
+    Reciter.playAyah(pair[0], pair[1]);
+  }
+
+  // ordinal of each page word WITHIN its own ayah (1-indexed, real words only — exactly the
+  // numbering the word-audio CDN uses), parallel to getPageWordAyahList. Sourced from the
+  // API's own position field: a run's startWord + entry index (mushaf) or the block's
+  // startWord + entry index (ayah view). Segments of a waqf-split entry share its ordinal.
+  var pageWordOrdinalCache = Object.create(null);
+
+  function getPageWordOrdinals(pageNo){
+    if (pageWordOrdinalCache[pageNo]) return pageWordOrdinalCache[pageNo];
+    var ords = [];
+    if (pageLinesCache[pageNo]){
+      pageLinesCache[pageNo].forEach(function(line){
+        if (line[0] !== "t") return;
+        line[1].forEach(function(run){
+          for (var wi = 0; wi < run[3].length; wi++){
+            for (var si = 0; si < run[3][wi].split(" ").length; si++) ords.push(run[2] + wi);
+          }
+        });
+      });
+    } else if (pageAyahBlocksCache[pageNo]){
+      pageAyahBlocksCache[pageNo].forEach(function(block){
+        if (block[0] !== "ayah") return;
+        for (var i = 0; i < block[4].length; i++) ords.push(block[6] + i);
+      });
+    }
+    if (ords.length) pageWordOrdinalCache[pageNo] = ords;
+    return ords;
+  }
+
+  function wireAudioBar(){
+    var bar = document.getElementById("audioBar");
+    document.getElementById("audioBarToggle").addEventListener("click", function(){
+      bar.classList.toggle("open");
+      syncFixedBarOffsets(); // the expanded panel changes what the reader must pad for
+    });
+    var cb = document.getElementById("tapPlayToggle");
+    cb.addEventListener("change", function(e){
+      audioPrefs.tapPlay = e.target.checked;
+      saveAudioPrefs();
+      if (!audioPrefs.tapPlay) Reciter.stop();
+    });
+    applyTapPlayUI();
+  }
+
   // ---------------- tajweed markup parsing (data → colored spans) ----------------
   // Only classes we have a color for become spans (see .tj rules in style.css); anything else
   // the API might introduce (custom-*) keeps its text, uncolored.
@@ -718,9 +800,11 @@
   function syncFixedBarOffsets(){
     var headerEl = document.querySelector("header.topbar");
     var footerEl = document.querySelector(".reveal-controls");
+    var audioBarEl = document.querySelector(".audio-bar");
     if (!headerEl || !footerEl) return;
     document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
-    document.documentElement.style.setProperty("--footer-h", (footerEl.offsetHeight + 16) + "px");
+    var bottomH = footerEl.offsetHeight + (audioBarEl ? audioBarEl.offsetHeight : 0);
+    document.documentElement.style.setProperty("--footer-h", (bottomH + 16) + "px");
   }
 
   function moveCursor(delta){
@@ -737,6 +821,7 @@
     }
     if (next === cur) return;
     pageCursor[currentPage] = next;
+    if (delta > 0) playWordAtIndex(currentPage, next - 1); // revealing a word aloud
     renderPage(currentPage, true);
   }
 
@@ -782,6 +867,7 @@
       next++;
     }
     pageCursor[currentPage] = next;
+    playAyahPair([targetSurah, targetAyah]); // whole-ayah reveal plays the whole ayah
     renderPage(currentPage, true);
   }
 
@@ -919,7 +1005,10 @@
     container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
       el.addEventListener("click", function(){
         if (suppressNextWordClick){ suppressNextWordClick = false; return; }
-        pageCursor[currentPage] = +el.dataset.idx + 1;
+        var idx = +el.dataset.idx;
+        pageCursor[currentPage] = idx + 1;
+        if (el.classList.contains("word") || el.classList.contains("wgloss")) playWordAtIndex(currentPage, idx);
+        else playAyahPair(getPageWordAyahList(currentPage)[idx]); // num/sajda = whole-ayah reveal
         renderPage(currentPage, true);
       });
       if (el.classList.contains("word")) wireLongPressBookmark(el);
@@ -1001,7 +1090,10 @@
     container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
       el.addEventListener("click", function(){
         if (suppressNextWordClick){ suppressNextWordClick = false; return; }
-        pageCursor[currentPage] = +el.dataset.idx + 1;
+        var idx = +el.dataset.idx;
+        pageCursor[currentPage] = idx + 1;
+        if (el.classList.contains("word")) playWordAtIndex(currentPage, idx);
+        else playAyahPair(getPageWordAyahList(currentPage)[idx]);
         renderPage(currentPage, true);
       });
     });
@@ -1250,6 +1342,7 @@
     renderBookmarkList();
     buildReaderShell();
     wireSettingsPanel();
+    wireAudioBar();
     renderPage(1);
   }
 

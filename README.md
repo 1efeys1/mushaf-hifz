@@ -37,6 +37,8 @@ repo.
   halaman pertama, ada-tidaknya Basmalah) — kecil (~10KB), jarang berubah.
 - `quran-api.js` — fetch halaman dari api.quran.com + cache di
   `localStorage` (maks 7 hari, sesuai ketentuan provider).
+- `audio.js` — engine playback reciter (Mishary Rashid Alafasy per-ayat
+  + audio per-kata), satu elemen `<audio>` bersama.
 - `page-layout.js` — transformasi murni: data mentah API → struktur baris
   yang di-render `app.js` (deteksi header surah, Basmalah, akhir ayat,
   sajda).

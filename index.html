@@ -31,10 +31,21 @@
   <button class="chip" id="toggleSettings" title="Pengaturan">&#9881;&#xFE0E;</button>
 </header>
 
-<div class="edge-fabs">
-  <button class="edge-fab" id="fabSidebar" type="button" title="Daftar surah">☰&#xFE0E;</button>
-  <button class="edge-fab" id="fabSettings" type="button" title="Pengaturan">&#9881;&#xFE0E;</button>
-</div>
+  <div class="edge-fabs">
+    <button class="edge-fab" id="fabSidebar" type="button" title="Daftar surah">☰&#xFE0E;</button>
+    <button class="edge-fab" id="fabSettings" type="button" title="Pengaturan">&#9881;&#xFE0E;</button>
+  </div>
+
+  <div class="audio-bar" id="audioBar">
+    <button class="audio-bar-head" id="audioBarToggle" type="button">
+      <span class="ab-title">&#128266; Mishary Rashid Alafasy</span>
+      <span class="ab-chevron" id="audioBarChevron">&#9650;</span>
+    </button>
+    <div class="audio-panel" id="audioPanel">
+      <label class="check-row"><input type="checkbox" id="tapPlayToggle"><span>Putar audio saat ayat dibuka</span></label>
+      <div class="ab-credit">Reciter: Mishary Rashid Alafasy &middot; Audio kata: CDN Quran.com</div>
+    </div>
+  </div>
 
 <div class="shell" id="shell">
   <aside class="sidebar" id="sidebar">
@@ -111,6 +122,7 @@
 <script src="surah-meta.js"></script>
 <script src="quran-api.js"></script>
 <script src="page-layout.js"></script>
+<script src="audio.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

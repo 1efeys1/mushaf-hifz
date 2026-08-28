@@ -435,6 +435,52 @@
   body.hide-translation .ayah-translation{ display:none; }
   body.hide-word-gloss .aw-gloss{ display:none; }
 
+  /* ---------- reciter audio bar (issue #10) — slim bar above the reveal footer, expands
+     upward into its control panel ---------- */
+  .audio-bar{
+    position:fixed;
+    left:0; right:0;
+    bottom:var(--footer-h, 60px); /* reveal-controls' own height — but see syncFixedBarOffsets:
+       app.js bakes BOTH bars into --footer-h, so this lands the audio bar right on top of it */
+    z-index:11;
+    background:linear-gradient(180deg,#173626,#122a1d);
+    border-top:1px solid #0a1610;
+  }
+  .audio-bar-head{
+    display:flex;
+    width:100%;
+    align-items:center;
+    justify-content:center;
+    gap:8px;
+    background:transparent;
+    border:none;
+    color:#EFE6C9;
+    padding:7px 12px;
+    font-size:12.5px;
+    font-family:'Work Sans',sans-serif;
+    cursor:pointer;
+  }
+  .audio-bar-head:hover{ background:#24463466; }
+  .ab-chevron{
+    color:#7f8f7c;
+    font-size:9px;
+    transition:transform .2s ease;
+  }
+  .audio-bar.open .ab-chevron{ transform:rotate(180deg); }
+  .audio-panel{
+    display:none;
+    padding:10px 16px 12px;
+    border-top:1px solid #1c3327;
+    color:#cbd8c2;
+    font-size:13px;
+  }
+  .audio-bar.open .audio-panel{ display:block; }
+  .ab-credit{
+    font-size:10.5px;
+    color:#7f8f7c;
+    margin-top:8px;
+  }
+
   .mushaf-page{
     position:relative;
     width:100%;
@@ -798,7 +844,8 @@
      min-width:761px too (e.g. 812×375) but keeps its sidebar as an overlay like mobile does —
      it sets its own left/right for these bars in its own media query below instead. */
   @media (min-width:761px) and (min-height:501px){
-    .shell:not(.collapsed) .reveal-controls{
+    .shell:not(.collapsed) .reveal-controls,
+    .shell:not(.collapsed) .audio-bar{
       left:var(--sidebar-w);
     }
   }
