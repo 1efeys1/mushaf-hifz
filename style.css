@@ -441,6 +441,11 @@
     max-width:760px;
     min-height:70vh;
     flex-shrink:0;
+    /* column flex so a SHORT page's content centers vertically (issue #13: pages 1-2 are
+       sparse under the current API pagination and sat at the top of a tall parchment);
+       full pages have no free space to distribute, so they're unaffected */
+    display:flex;
+    flex-direction:column;
     background:
       radial-gradient(circle at 50% 0%, #fffdf6 0%, var(--paper) 40%);
     border:1px solid var(--gold);
@@ -522,6 +527,8 @@
     font-size:calc(var(--ayah-size) * var(--page-scale));
     color:var(--ink);
     max-width:100%;
+    /* auto vertical margins = the actual centering within the flex-column parchment */
+    margin:auto 0;
   }
   .mushaf-line{
     text-align:justify;
@@ -660,6 +667,7 @@
     font-family:var(--ayah-font), 'Amiri Quran', serif;
     color:var(--ink);
     max-width:100%;
+    margin:auto 0; /* center short pages vertically, same as .ayat-flow */
   }
   .ayah-block{
     margin:0 0 22px;
