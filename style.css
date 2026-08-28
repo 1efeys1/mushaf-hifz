@@ -476,9 +476,12 @@
     font-size:13px;
   }
   .audio-bar.open .audio-panel{ display:block; }
+  /* panel content is centered, matching the centered collapsed bar */
+  .audio-panel .check-row{ justify-content:center; }
   .ab-row{
     display:flex;
     align-items:center;
+    justify-content:center;
     gap:6px;
     margin-top:8px;
     flex-wrap:wrap;
@@ -519,6 +522,7 @@
     font-size:10.5px;
     color:#7f8f7c;
     margin-top:8px;
+    text-align:center;
   }
 
   .mushaf-page{
