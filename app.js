@@ -320,7 +320,7 @@
   function loadPageLines(pageNo){
     if (pageLinesCache[pageNo]) return Promise.resolve(pageLinesCache[pageNo]);
     if (pageLoadPromises[pageNo]) return pageLoadPromises[pageNo];
-    var promise = loadPageWithHeal(pageNo, QuranApi.loadRawPage).then(function(verses){
+    var promise = loadPageWithHeal(pageNo, QuranApi.loadPage).then(function(verses){
       var lines = PageLayout.buildPageLines(pageNo, verses, SURAH_META);
       pageLinesCache[pageNo] = lines;
       delete pageLoadPromises[pageNo];
@@ -333,16 +333,16 @@
     return promise;
   }
 
-  // Same page, grouped by ayah with translations — for the "ayah" view mode. Separate cache
-  // from pageLinesCache/loadPageLines above: different source fetch (QuranApi.loadTranslatedPage),
-  // different shape (PageLayout.buildAyahBlocks), never mixed.
+  // Same page, grouped by ayah with translations — for the "ayah" view mode. Shares the same
+  // underlying fetch/cache as loadPageLines (both views read the translated response), so
+  // switching modes mid-page is instant; only the transform differs.
   var pageAyahBlocksCache = Object.create(null);
   var pageAyahBlockLoadPromises = Object.create(null);
 
   function loadPageAyahBlocks(pageNo){
     if (pageAyahBlocksCache[pageNo]) return Promise.resolve(pageAyahBlocksCache[pageNo]);
     if (pageAyahBlockLoadPromises[pageNo]) return pageAyahBlockLoadPromises[pageNo];
-    var promise = loadPageWithHeal(pageNo, QuranApi.loadTranslatedPage).then(function(verses){
+    var promise = loadPageWithHeal(pageNo, QuranApi.loadPage).then(function(verses){
       var blocks = PageLayout.buildAyahBlocks(pageNo, verses, SURAH_META);
       pageAyahBlocksCache[pageNo] = blocks;
       delete pageAyahBlockLoadPromises[pageNo];
@@ -877,15 +877,22 @@
       } else { // "t" — a real mushaf line
         html += '<div class="mushaf-line">';
         line[1].forEach(function(run){
-          var surah = run[0], ayah = run[1], startWord = run[2], wordEntries = run[3], endsAyah = run[4], isSajdaAyah = run[5], tajweedEntries = run[6];
+          var surah = run[0], ayah = run[1], startWord = run[2], wordEntries = run[3], endsAyah = run[4], isSajdaAyah = run[5], tajweedEntries = run[6], glossEntries = run[7];
           for (var wi = 0; wi < wordEntries.length; wi++){
             var segs = wordEntries[wi].split(" ");
             var tjParts = tajweedSegments(tajweedEntries ? tajweedEntries[wi] : null, segs.length);
+            var gloss = glossEntries ? glossEntries[wi] : null;
             for (var si = 0; si < segs.length; si++){
               var isLastOfAyah = endsAyah && wi === wordEntries.length - 1 && si === segs.length - 1;
               var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
               var revealed = wordIndex < cursor || isHintWord;
-              html += '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>';
+              // each word is a two-row cell: the Arabic (blurred/revealed by the cursor) over
+              // its Indonesian gloss (always visible — a study aid, never tested — see
+              // body.hide-word-gloss in style.css for the toggle)
+              html += '<span class="word-cell">' +
+                '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>' +
+                (gloss && si === 0 ? '<span class="wgloss" data-idx="' + wordIndex + '">' + escapeHtml(gloss) + '</span>' : "") +
+              '</span>';
               if (isLastOfAyah){
                 // Independent of the word span above (CSS filter can't be un-blurred by a
                 // descendant, so this has to be a sibling, not nested inside it): with hint
@@ -909,7 +916,7 @@
     html += '</div><div class="page-number">— ' + toArabicDigits(pageNo) + ' —</div>';
     container.innerHTML = html;
 
-    container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+    container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
       el.addEventListener("click", function(){
         if (suppressNextWordClick){ suppressNextWordClick = false; return; }
         pageCursor[currentPage] = +el.dataset.idx + 1;

@@ -7,7 +7,7 @@
 // so the 15-line-per-page layout is exactly what the API says it is, not something computed here:
 //   surah header: ["h", surahNumber, arabicTitle]
 //   Basmalah:     ["b"]
-//   text line:    ["t", [[surah, ayah, startWordPosition, [word1, word2, ...], endsAyah, isSajda, tajweedWords], ...]]
+//   text line:    ["t", [[surah, ayah, startWordPosition, [word1, word2, ...], endsAyah, isSajda, tajweedWords, glossWords], ...]]
 //     — one array entry per run of consecutive words belonging to the same ayah; most lines have
 //       exactly one run, a line spanning an ayah boundary has two+. Words stay as an array (one
 //       entry per API word entry — an entry CAN render as multiple word spans when it carries a
@@ -18,6 +18,9 @@
 //       `tajweedWords` is the raw text_uthmani_tajweed string per word entry (inline
 //       `<rule class=...>` tags, see app.js), parallel to the words array — parallel to word
 //       ENTRIES, never re-split here; alignment to rendered spans is resolved at render time.
+//       `glossWords` is the per-word translation text (word.translation.text from the
+//       translated fetch — both view modes read that fetch now), same parallel shape, null
+//       entries where the API has no gloss.
 (function(window){
   "use strict";
 
@@ -33,6 +36,7 @@
         entries.push({
           surah: surah, ayah: ayah, line: w.line_number, position: w.position,
           text: w.text_uthmani, tajweed: w.text_uthmani_tajweed || null,
+          gloss: w.translation ? (w.translation.text || null) : null,
           isEnd: w.char_type_name !== "word", isSajda: isSajda
         });
       });
@@ -45,7 +49,7 @@
     var curRun = null;
 
     function flushRun(endsAyah){
-      if (curRun) runs.push([curRun.surah, curRun.ayah, curRun.startWord, curRun.words, !!endsAyah, curRun.isSajda, curRun.tajweed]);
+      if (curRun) runs.push([curRun.surah, curRun.ayah, curRun.startWord, curRun.words, !!endsAyah, curRun.isSajda, curRun.tajweed, curRun.gloss]);
       curRun = null;
     }
     function flushLine(){
@@ -79,10 +83,11 @@
       }
       if (!curRun || curRun.surah !== e.surah || curRun.ayah !== e.ayah){
         flushRun(false);
-        curRun = { surah: e.surah, ayah: e.ayah, startWord: e.position, words: [], tajweed: [], isSajda: e.isSajda };
+        curRun = { surah: e.surah, ayah: e.ayah, startWord: e.position, words: [], tajweed: [], gloss: [], isSajda: e.isSajda };
       }
       curRun.words.push(e.text);
       curRun.tajweed.push(e.tajweed);
+      curRun.gloss.push(e.gloss);
     });
     flushLine();
 

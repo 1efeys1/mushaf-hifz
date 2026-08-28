@@ -537,6 +537,37 @@
     scrollbar-width:none;
   }
   .mushaf-line::-webkit-scrollbar{ display:none; }
+  /* each mushaf word renders as a two-row cell: Arabic on top (reveal-cursor blur applies to
+     it), its Indonesian gloss under it — always visible when the "Terjemahan per kata" toggle
+     is on, never blurred (study aid, not something being tested). Glosses are capped and can
+     wrap so a long one widens its cell only modestly — fitLinesToWidth still owns the page
+     scale. Waqf-mark sub-spans (a word entry split into two) get the gloss on the first. */
+  .word-cell{
+    display:inline-block;
+    vertical-align:top;
+    text-align:center;
+  }
+  .wgloss{
+    display:none;
+    direction:ltr;
+    font-family:'Work Sans',sans-serif;
+    font-size:.34em;
+    line-height:1.25;
+    color:var(--ink-soft);
+    max-width:6.5em;
+    overflow-wrap:break-word;
+    margin-top:.35em;
+    cursor:pointer;
+    -webkit-user-select:none;
+    user-select:none;
+  }
+  body:not(.hide-word-gloss) .wgloss{ display:block; }
+  /* the ayah badge sits level with the Arabic row, not the cell's full (arabic+gloss) height */
+  body:not(.hide-word-gloss) .mushaf-line .num,
+  body:not(.hide-word-gloss) .mushaf-line .sajda-tag{
+    vertical-align:top;
+    margin-top:.45em;
+  }
   .word{
     cursor:pointer;
     filter:blur(7px);

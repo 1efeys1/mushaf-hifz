@@ -14,19 +14,18 @@
   // Bump this if the requested edition/fields ever change again — old cache entries under a
   // different prefix are simply ignored (and age out via each browser's own storage limits),
   // instead of serving whatever edition happened to be cached under the same key before.
-  var CACHE_PREFIX = "mushafHifzPageCache:v3:";
-  // Separate namespace from CACHE_PREFIX: the response shape differs (adds word.translation
-  // and verse.translations), so it can't share cache entries with the plain mushaf-mode fetch.
-  var CACHE_PREFIX_TRANSLATED = "mushafHifzTranslatedPageCache:v2:";
+  // Single namespace now: both view modes read this same translated response (the mushaf
+  // layout needs word.translation for its optional per-word glosses, and sharing means
+  // switching view modes never refetches).
+  var CACHE_PREFIX = "mushafHifzTranslatedPageCache:v2:";
   // The API provider's terms cap how long responses may be cached — 7 days.
   var CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var API_BASE = "https://api.quran.com/api/v4/verses/by_page/";
   // code_v2 must stay in word_fields even though its value is unused — see file header. It's
-  // what keeps this fetch on the same 16-line page boundaries as the plain mushaf-mode fetch,
-  // which matters here too: buildAyahBlocks filters words by page_number, and 15-line vs
-  // 16-line editions don't share page breaks. text_uthmani_tajweed carries inline rule tags
-  // (see app.js's tajweed renderer) — same caveats: value needed for rendering, removing it
-  // silently kills the tajweed toggle.
+  // what pins every fetch to the same 16-line page boundaries (buildPageLines and
+  // buildAyahBlocks both filter words by page_number, and 15-line vs 16-line editions don't
+  // share page breaks). text_uthmani_tajweed carries inline rule tags (see app.js's tajweed
+  // renderer) — same caveat: removing it silently kills the tajweed toggle.
   var WORD_FIELDS = "text_uthmani,text_uthmani_tajweed,line_number,position,code_v2";
   var VERSE_FIELDS = "verse_key,sajdah_number";
   // translations=33: Kemenag (Indonesian Islamic Affairs Ministry) verse-level translation —
@@ -58,18 +57,6 @@
   }
 
   function fetchRawVerses(pageNo){
-    var url = API_BASE + pageNo + "?words=true&word_fields=" + WORD_FIELDS +
-      "&fields=" + VERSE_FIELDS + "&mushaf=2&per_page=all";
-    return fetch(url).then(function(res){
-      if (!res.ok) throw new Error("HTTP " + res.status);
-      return res.json();
-    }).then(function(data){
-      if (!data || !Array.isArray(data.verses)) throw new Error("unexpected API response shape");
-      return data.verses;
-    });
-  }
-
-  function fetchRawTranslatedVerses(pageNo){
     var url = API_BASE + pageNo + "?words=true&word_fields=" + WORD_FIELDS +
       "&fields=" + VERSE_FIELDS + "&translations=" + TRANSLATION_RESOURCE_ID + "&language=id" +
       "&mushaf=2&per_page=all";
@@ -117,28 +104,17 @@
   }
 
   window.QuranApi = {
-    // Promise<verses[]> — from cache if fresh, otherwise fetched and cached. `force` skips
-    // the cache read and refetches/overwrites — used by app.js's verse-gap self-heal when a
-    // response (live or cached) is missing a verse it should contain.
-    loadRawPage: function(pageNo, force){
+    // Promise<verses[]> — from cache if fresh, otherwise fetched and cached. Both view modes
+    // share this one fetch. `force` skips the cache read and refetches/overwrites — used by
+    // app.js's verse-gap self-heal when a response (live or cached) is missing a verse it
+    // should contain.
+    loadPage: function(pageNo, force){
       if (!force){
         var cached = readCache(CACHE_PREFIX, pageNo);
         if (cached) return Promise.resolve(cached);
       }
       return fetchPageWithLookahead(pageNo, fetchRawVerses, CACHE_PREFIX).then(function(verses){
         writeCache(CACHE_PREFIX, pageNo, verses);
-        return verses;
-      });
-    },
-    // Same page, but with word.translation and verse.translations populated — for the "Per
-    // Ayat" study view. Separate cache namespace/TTL from loadRawPage (see CACHE_PREFIX_TRANSLATED).
-    loadTranslatedPage: function(pageNo, force){
-      if (!force){
-        var cached = readCache(CACHE_PREFIX_TRANSLATED, pageNo);
-        if (cached) return Promise.resolve(cached);
-      }
-      return fetchPageWithLookahead(pageNo, fetchRawTranslatedVerses, CACHE_PREFIX_TRANSLATED).then(function(verses){
-        writeCache(CACHE_PREFIX_TRANSLATED, pageNo, verses);
         return verses;
       });
     }
