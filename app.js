@@ -226,14 +226,16 @@
   }
 
   function playWordAtIndex(pageNo, idx){
-    if (!audioPrefs.tapPlay) return;
+    // while a range playback is running the element belongs to it — revealing words stays
+    // SILENT so the user can test themselves word-by-word alongside the playback
+    if (!audioPrefs.tapPlay || Reciter.rangeActive()) return;
     var pair = getPageWordAyahList(pageNo)[idx];
     var ordinal = getPageWordOrdinals(pageNo)[idx];
     if (pair && ordinal) Reciter.playWord(pair[0], pair[1], ordinal);
   }
 
   function playAyahPair(pair){
-    if (!audioPrefs.tapPlay || !pair) return;
+    if (!audioPrefs.tapPlay || Reciter.rangeActive() || !pair) return;
     Reciter.playAyah(pair[0], pair[1]);
   }
 
