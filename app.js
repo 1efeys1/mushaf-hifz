@@ -231,12 +231,80 @@
     if (!audioPrefs.tapPlay || Reciter.rangeActive()) return;
     var pair = getPageWordAyahList(pageNo)[idx];
     var ordinal = getPageWordOrdinals(pageNo)[idx];
-    if (pair && ordinal) Reciter.playWord(pair[0], pair[1], ordinal);
+    if (!pair || !ordinal) return;
+    setPlayingAyah(null); // a word tap cuts any running tap-ayah playback — no ayah to light
+    Reciter.playWord(pair[0], pair[1], ordinal, null, function(){
+      showAudioNotice("Gagal memuat audio kata");
+    });
   }
 
   function playAyahPair(pair){
     if (!audioPrefs.tapPlay || Reciter.rangeActive() || !pair) return;
-    Reciter.playAyah(pair[0], pair[1]);
+    setPlayingAyah(pair);
+    Reciter.playAyah(pair[0], pair[1], function(){ setPlayingAyah(null); }, function(){
+      setPlayingAyah(null);
+      showAudioNotice("Gagal memuat audio");
+    });
+  }
+
+  // ---------- playing-ayah highlight ----------
+  // [surah, ayah] of the ayah whose audio is sounding (tap-ayah or range), null when idle.
+  // Kept as state because every reveal re-renders the page — applyPlayingHighlight re-lights
+  // the spans after each innerHTML swap.
+  var playingAyah = null;
+
+  function setPlayingAyah(pair){
+    playingAyah = pair;
+    applyPlayingHighlight();
+  }
+
+  function applyPlayingHighlight(){
+    var container = document.getElementById("mushafPage");
+    if (!container) return;
+    container.querySelectorAll(".playing").forEach(function(el){ el.classList.remove("playing"); });
+    if (!playingAyah) return;
+    var surah = playingAyah[0], ayah = playingAyah[1];
+    // ayah view: whole-ayat blocks exist in the DOM — light the block itself
+    var block = container.querySelector('.ayah-block[data-surah="' + surah + '"][data-ayah="' + ayah + '"]');
+    if (block){ block.classList.add("playing"); return; }
+    // mushaf view: no per-ayah wrapper, so light every span whose data-idx falls inside the
+    // ayah's word range on this page (the list is index-parallel to data-idx)
+    var list = getPageWordAyahList(currentPage);
+    var lo = -1, hi = -1;
+    for (var i = 0; i < list.length; i++){
+      if (list[i][0] === surah && list[i][1] === ayah){
+        if (lo < 0) lo = i;
+        hi = i;
+      }
+    }
+    if (lo < 0) return; // ayah isn't on this page — nothing to light
+    container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
+      var idx = +el.dataset.idx;
+      if (idx >= lo && idx <= hi) el.classList.add("playing");
+    });
+  }
+
+  // follow-the-recitation: bring a newly-started range ayah into view (only when it's
+  // off-screen — never yanks the page while the user reads where they want)
+  function scrollPlayingAyahIntoView(){
+    var el = document.querySelector("#mushafPage .playing");
+    if (!el) return;
+    var r = el.getBoundingClientRect();
+    if (r.top < 0 || r.bottom > window.innerHeight){
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  }
+
+  // transient inline notice in the always-visible bar head (the panel itself may be closed)
+  var audioNoticeTimer = null;
+  function showAudioNotice(msg){
+    var title = document.querySelector(".ab-title");
+    if (!title) return;
+    title.textContent = "⚠ " + msg;
+    clearTimeout(audioNoticeTimer);
+    audioNoticeTimer = setTimeout(function(){
+      title.textContent = "🔊 Mishary Rashid Alafasy";
+    }, 4000);
   }
 
   // ordinal of each page word WITHIN its own ayah (1-indexed, real words only — exactly the
@@ -280,7 +348,10 @@
     cb.addEventListener("change", function(e){
       audioPrefs.tapPlay = e.target.checked;
       saveAudioPrefs();
-      if (!audioPrefs.tapPlay) Reciter.stop();
+      if (!audioPrefs.tapPlay){
+        Reciter.stop();
+        setPlayingAyah(null);
+      }
     });
     applyTapPlayUI();
     wireRangeControls();
@@ -380,8 +451,20 @@
 
     document.getElementById("rangePlay").addEventListener("click", function(){
       Reciter.startRange(audioPrefs.surah, audioPrefs.from, audioPrefs.to, audioPrefs.repeat,
-        function(ayah, rep){ rangeStatus(audioPrefs.surah + ":" + ayah + " · ulangan " + rep + "/" + audioPrefs.repeat); },
-        function(){ rangeStatus("selesai"); });
+        function(ayah, rep){
+          setPlayingAyah([audioPrefs.surah, ayah]);
+          scrollPlayingAyahIntoView();
+          rangeStatus(audioPrefs.surah + ":" + ayah + " · ulangan " + rep + "/" + audioPrefs.repeat);
+        },
+        function(){
+          setPlayingAyah(null);
+          rangeStatus("selesai");
+        },
+        function(){
+          setPlayingAyah(null);
+          rangeStatus("audio gagal — berhenti");
+          showAudioNotice("Gagal memuat audio");
+        });
     });
     document.getElementById("rangePause").addEventListener("click", function(){
       if (Reciter.rangePaused()){ Reciter.resumeRange(); rangeStatus("lanjut…"); }
@@ -389,6 +472,7 @@
     });
     document.getElementById("rangeStop").addEventListener("click", function(){
       Reciter.stopRange();
+      setPlayingAyah(null);
       rangeStatus("");
     });
   }
@@ -1147,6 +1231,7 @@
 
     updateStatus(surahsOnPage);
     fitLinesToWidth();
+    applyPlayingHighlight(); // innerHTML swap above wiped the .playing spans
     if (!skipScrollReset){
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
@@ -1234,6 +1319,7 @@
 
     if (surahsOnPage.length) highlightActiveSurah(surahsOnPage[0]);
     updateStatus(surahsOnPage);
+    applyPlayingHighlight(); // same innerHTML-swap wipe as mushaf mode above
     if (!skipScrollReset){
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;

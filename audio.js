@@ -49,7 +49,7 @@
     return el;
   }
 
-  function playUrl(url, onEnd){
+  function playUrl(url, onEnd, onError){
     var a = ensureEl();
     playToken++;
     var token = playToken;
@@ -57,7 +57,13 @@
     a.src = url;
     a.playbackRate = speed;
     a.onended = function(){ if (token === playToken && onEnd) onEnd(); };
-    a.onerror = function(){ if (token === playToken && onEnd) onEnd(); };
+    // a load failure surfaces here (404, offline); the caller decides whether it's fatal or
+    // just skipped — only a missing onError falls back to advancing like a normal end
+    a.onerror = function(){
+      if (token !== playToken) return;
+      if (onError) onError();
+      else if (onEnd) onEnd();
+    };
     // play() returns a promise that rejects when a subsequent pause()/src-swap interrupts a
     // still-loading play (the normal case when a new tap cuts the previous one short) —
     // swallow it so it never surfaces as an unhandled rejection
@@ -79,14 +85,14 @@
 
   window.Reciter = {
     // full-ayah playback (Alafasy)
-    playAyah: function(surah, ayah, onEnd){
+    playAyah: function(surah, ayah, onEnd, onError){
       rangeQueue = null; // a tap-play always interrupts an active range
-      return playUrl(ayahAudioUrl(surah, ayah), onEnd);
+      return playUrl(ayahAudioUrl(surah, ayah), onEnd, onError);
     },
     // single-word playback (word-by-word CDN set)
-    playWord: function(surah, ayah, wordOrdinal, onEnd){
+    playWord: function(surah, ayah, wordOrdinal, onEnd, onError){
       rangeQueue = null;
-      return playUrl(wordAudioUrl(surah, ayah, wordOrdinal), onEnd);
+      return playUrl(wordAudioUrl(surah, ayah, wordOrdinal), onEnd, onError);
     },
     stop: function(){
       rangeQueue = null;
@@ -101,10 +107,11 @@
 
     // ---- range playback: ayahs from..to of one surah, each repeated `repeat` times ----
     // onProgress(ayah, rep) fires when an ayah repetition starts; onDone() when the whole
-    // range finishes (or is stopped). Advances on natural end AND on error (skip broken).
-    startRange: function(surah, from, to, repeat, onProgress, onDone){
+    // range finishes (or is stopped). A failed ayah is skipped, but three failures in a row
+    // (offline / CDN down) abort the range via onError instead of burning through it.
+    startRange: function(surah, from, to, repeat, onProgress, onDone, onError){
       playToken++;
-      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false };
+      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false, errStreak: 0 };
       var queue = rangeQueue;
 
       function step(){
@@ -113,12 +120,20 @@
         var nextIsRepeat = queue.rep < queue.repeat;
         var nextIsAyah = queue.ayah < queue.to;
         if (nextIsRepeat || nextIsAyah) preload(ayahAudioUrl(surah, nextIsRepeat ? queue.ayah : queue.ayah + 1));
-        playUrl(ayahAudioUrl(surah, queue.ayah), function(){
+        function advance(){
           if (rangeQueue !== queue) return;
           if (queue.rep < queue.repeat){ queue.rep++; }
           else if (queue.ayah < queue.to){ queue.ayah++; queue.rep = 1; }
           else { rangeQueue = null; onDone(); return; }
           step();
+        }
+        playUrl(ayahAudioUrl(surah, queue.ayah), function(){
+          queue.errStreak = 0;
+          advance();
+        }, function(){
+          queue.errStreak++;
+          if (queue.errStreak >= 3){ rangeQueue = null; if (onError) onError(); return; }
+          advance();
         });
       }
 

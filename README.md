@@ -60,6 +60,11 @@ gak dipakai buat render. Metadata surah (nama, halaman pertama, dsb) di
 `surah-meta.js` datang dari `api.alquran.cloud/v1/meta` +
 `api.quran.com/api/v4/chapters`.
 
+Audio reciter (fitur 🔊 di bar bawah): per-ayat Mishary Rashid Alafasy
+dari CDN publik Islamic Network (`cdn.islamic.network`), per-kata dari
+set word-by-word CDN Quran.com (`audio.qurancdn.com`) — reciter per-kata
+fixed (bukan Alafasy). 128kbps ≈ 1 MB/menit playback.
+
 Detail teknis lebih lengkap (keputusan desain, bug yang udah difix, status
 verifikasi) ada di `NOTES.md` — file itu sengaja gitignored, jadi cuma ada
 lokal.

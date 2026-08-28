@@ -694,6 +694,18 @@
   }
   .word:hover{ background:#00000008; }
 
+  /* ---------- playing-ayah highlight (app.js applyPlayingHighlight) ----------
+     Mushaf mode lights each span of the sounding ayah; ayah mode lights its block. The
+     tint is translucent so tajweed colors and the blur (unrevealed words) stay readable
+     underneath — the highlight marks WHERE the recitation is, hidden or not. */
+  .word.playing, .wgloss.playing, .num.playing, .sajda-tag.playing{
+    background:#C9A64B4D;
+  }
+  .ayah-block.playing{
+    background:#C9A64B2E;
+    border-radius:8px;
+  }
+
   /* ---------- tajweed coloring ----------
      Spans are always in the DOM (parsed from the API's inline rule tags — see app.js); whether
      they take color at all is one body class, so the toggle is instant and never re-renders.
