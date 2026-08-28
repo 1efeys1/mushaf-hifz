@@ -199,11 +199,12 @@
   var RANGE_REPEAT_MAX = 10;
 
   function loadAudioPrefs(){
-    var prefs = { tapPlay: true, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
+    var prefs = { tapPlay: true, syncReveal: false, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
     try{
       var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
       if (raw && typeof raw === "object"){
         if (typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
+        if (typeof raw.syncReveal === "boolean") prefs.syncReveal = raw.syncReveal;
         if (Number.isInteger(raw.surah) && raw.surah >= 1 && raw.surah <= 114) prefs.surah = raw.surah;
         if (Number.isInteger(raw.from) && raw.from >= 1) prefs.from = raw.from;
         if (Number.isInteger(raw.to) && raw.to >= 1) prefs.to = raw.to;
@@ -256,6 +257,8 @@
   function setPlayingAyah(pair){
     playingAyah = pair;
     applyPlayingHighlight();
+    if (pair) beginKaraoke(pair);
+    else karaoke = null;
   }
 
   function applyPlayingHighlight(){
@@ -307,6 +310,88 @@
     }, 4000);
   }
 
+  // ---------- karaoke reveal ("buka kata otomatis mengikuti bacaan") ----------
+  // While an ayah plays, its still-hidden words reveal one by one, each as it's recited.
+  // Word timings come from Quran.com's QDC segments API — Alafasy murattal is reciter id 7
+  // there (coincidentally the same number as the legacy v4 recitation id): each verse
+  // carries segments [wordPosition, startMs, endMs], ABSOLUTE in the surah's gapless file.
+  // Subtracting the verse's own timestamp_from maps them onto the per-ayah files we play —
+  // verified: the per-ayah files track the gapless blocks within ~60ms, imperceptible.
+  // A fetch failure just leaves the feature inert (words stay hidden) — never fatal.
+  var KARAOKE_RECITER = 7;
+  var karaokeSegCache = Object.create(null); // surah -> verse_timings (failures cached as [])
+  var karaoke = null; // active ayah's reveal state, see beginKaraoke
+
+  function loadKaraokeTimings(surah){
+    if (karaokeSegCache[surah]) return Promise.resolve(karaokeSegCache[surah]);
+    return fetch("https://api.quran.com/api/qdc/audio/reciters/" + KARAOKE_RECITER +
+        "/audio_files?chapter=" + surah + "&segments=true")
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        karaokeSegCache[surah] = (j && j.audio_files && j.audio_files[0] && j.audio_files[0].verse_timings) || [];
+        return karaokeSegCache[surah];
+      })
+      .catch(function(){ karaokeSegCache[surah] = []; return karaokeSegCache[surah]; });
+  }
+
+  function beginKaraoke(pair){
+    karaoke = null;
+    if (!audioPrefs.syncReveal) return;
+    var list = getPageWordAyahList(currentPage);
+    var ords = getPageWordOrdinals(currentPage);
+    var lo = -1, hi = -1;
+    for (var i = 0; i < list.length; i++){
+      if (list[i][0] === pair[0] && list[i][1] === pair[1]){ if (lo < 0) lo = i; hi = i; }
+    }
+    if (lo < 0) return; // playing ayah isn't on the open page — nothing to reveal into
+
+    // mushaf mode renders one API word as several spans (waqf splits share the ordinal),
+    // so revealing ordinal o must run the cursor through that ordinal's LAST span
+    var ordinalEndIdx = [];
+    var maxOrdinal = 0;
+    for (var w = lo; w <= hi; w++){
+      ordinalEndIdx[ords[w]] = w;
+      if (ords[w] > maxOrdinal) maxOrdinal = ords[w];
+    }
+    // words the cursor already reaches shouldn't replay — start past them
+    var cursor = pageCursor[currentPage] || 0;
+    var applied = 0;
+    for (var o = 1; o <= maxOrdinal; o++){
+      if (ordinalEndIdx[o] !== undefined && ordinalEndIdx[o] < cursor) applied = o;
+    }
+
+    wireKaraokeTick();
+    var state = { surah: pair[0], ayah: pair[1], ordinalEndIdx: ordinalEndIdx, maxOrdinal: maxOrdinal, applied: applied, starts: null };
+    karaoke = state;
+    loadKaraokeTimings(pair[0]).then(function(timings){
+      if (karaoke !== state) return; // playback moved on while fetching
+      var vt = timings[pair[1] - 1];
+      if (!vt || !vt.segments) return;
+      state.starts = vt.segments.map(function(seg){ return seg[1] - vt.timestamp_from; });
+    });
+  }
+
+  var karaokeTickWired = false;
+  function wireKaraokeTick(){
+    if (karaokeTickWired) return;
+    karaokeTickWired = true;
+    Reciter._el().addEventListener("timeupdate", function(){
+      if (!karaoke || !karaoke.starts) return;
+      var t = this.currentTime * 1000;
+      var target = 0;
+      while (target < karaoke.starts.length && karaoke.starts[target] <= t) target++;
+      if (target <= karaoke.applied) return;
+      karaoke.applied = target;
+      var ord = Math.min(target, karaoke.maxOrdinal);
+      var idx = karaoke.ordinalEndIdx[ord];
+      if (idx === undefined) return;
+      if ((pageCursor[currentPage] || 0) < idx + 1){
+        pageCursor[currentPage] = idx + 1;
+        renderPage(currentPage, true);
+      }
+    });
+  }
+
   // ordinal of each page word WITHIN its own ayah (1-indexed, real words only — exactly the
   // numbering the word-audio CDN uses), parallel to getPageWordAyahList. Sourced from the
   // API's own position field: a run's startWord + entry index (mushaf) or the block's
@@ -352,6 +437,15 @@
         Reciter.stop();
         setPlayingAyah(null);
       }
+    });
+    var sync = document.getElementById("syncRevealToggle");
+    sync.checked = audioPrefs.syncReveal;
+    sync.addEventListener("change", function(e){
+      audioPrefs.syncReveal = e.target.checked;
+      saveAudioPrefs();
+      if (!audioPrefs.syncReveal) karaoke = null;
+      // turning it on mid-playback picks the ayah up from wherever it currently is
+      else if (playingAyah) beginKaraoke(playingAyah);
     });
     applyTapPlayUI();
     wireRangeControls();
