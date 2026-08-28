@@ -1,9 +1,12 @@
 // Reciter playback engine — one shared <audio> element, one thing plays at a time.
 //
 // Sources (both verified serving audio/mpeg, deterministic URLs — no per-play API calls):
-//  - full ayah: Mishary Rashid Alafasy 128kbps, Islamic Network's public CDN
+//  - full ayah: the QDC gapless per-SURAH file (same recording the segment timings below
+//      describe, so word-sync is exact): https://download.quranicaudio.com/qdc/…
+//      played by seeking to the verse's timestamp_from — this is how quran.com itself
+//      plays. Falls back to per-ayah files when the timings API is unreachable:
 //      https://cdn.islamic.network/quran/audio/128/ar.alafasy/{globalAyahNumber}.mp3
-//    ({N} = 1..6236 counting from 1:1, computed locally from SURAH_META's ayah counts)
+//      ({N} = 1..6236 counting from 1:1, computed locally from SURAH_META).
 //  - single word: Quran.com's legacy word-by-word CDN set (fixed reciter, not Alafasy)
 //      https://audio.qurancdn.com/wbw/{sss}_{aaa}_{www}.mp3
 //    where www is the word's ordinal among the ayah's REAL words only — end/pause marker
@@ -13,6 +16,7 @@
 
   var AYAH_CDN = "https://cdn.islamic.network/quran/audio/128/ar.alafasy/";
   var WORD_CDN = "https://audio.qurancdn.com/wbw/";
+  var TIMINGS_URL = "https://api.quran.com/api/qdc/audio/reciters/7/audio_files?chapter=";
 
   function pad3(n){
     return (n < 10 ? "00" : n < 100 ? "0" : "") + n;
@@ -40,6 +44,7 @@
 
   var el = null; // the shared <audio>, created lazily
   var playToken = 0; // bump on every new play/stop so stale 'ended'/'error' handlers no-op
+  var playCallSeq = 0; // guards the async timings lookup in playAyah against a newer tap
 
   function ensureEl(){
     if (el) return el;
@@ -49,11 +54,34 @@
     return el;
   }
 
+  // ---- verse timings (Quran.com's QDC segments API) ----
+  // Alafasy murattal is reciter id 7 there (coincidentally the same number as the legacy
+  // v4 recitations id). Each verse carries segments [wordPosition, startMs, endMs],
+  // ABSOLUTE in the surah's gapless file whose URL rides along in the same response.
+  // Failures are cached as null — never refetched per ayah.
+  var timingsCache = Object.create(null); // surah -> {url, verses} | null
+
+  function loadTimings(surah){
+    if (timingsCache[surah] !== undefined) return Promise.resolve(timingsCache[surah]);
+    return fetch(TIMINGS_URL + surah + "&segments=true")
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        var f = j && j.audio_files && j.audio_files[0];
+        timingsCache[surah] = (f && Array.isArray(f.verse_timings) && f.verse_timings.length)
+          ? { url: f.audio_url, verses: f.verse_timings }
+          : null;
+        return timingsCache[surah];
+      })
+      .catch(function(){ timingsCache[surah] = null; return null; });
+  }
+
   function playUrl(url, onEnd, onError){
     var a = ensureEl();
     playToken++;
     var token = playToken;
+    gaplessNow = null;
     a.pause();
+    a.ontimeupdate = null; // a stale gapless watchdog must not double-fire on this play
     a.src = url;
     a.playbackRate = speed;
     a.onended = function(){ if (token === playToken && onEnd) onEnd(); };
@@ -72,22 +100,93 @@
     return token;
   }
 
-  var speed = 1;
-  var rangeQueue = null; // active range playback: {surah, from, to, repeat, ayah, rep, token, paused}
+  // ---- gapless per-surah playback (the sync-exact path) ----
+  // The element loads the surah's gapless file once, then each ayah is a seek to the
+  // verse's timestamp_from; a timeupdate watchdog ends it at timestamp_to ('ended' only
+  // fires at the file's very end, so verse boundaries are ours to enforce). Karaoke reads
+  // currentTime directly against the SAME absolute segment times — zero drift possible.
+  var gaplessNow = null; // {surah} while the element plays a gapless file
+  var gaplessSrc = ""; // the url currently loaded into the element, "" when per-file
 
-  // prefetch helper — warm the browser's HTTP cache for the next ayah so range playback
-  // doesn't stall between ayat on a slow connection
-  function preload(url){
-    var pre = new Audio();
-    pre.preload = "auto";
-    pre.src = url;
+  function playGaplessAyah(surah, ayah, timings, onEnd, onError){
+    var a = ensureEl();
+    var vt = timings.verses[ayah - 1];
+    playToken++;
+    var token = playToken;
+    gaplessNow = { surah: surah };
+    // segment marks can slice a hair before the verse boundary (−55ms seen on 3:189) —
+    // start slightly early so the first syllable is never clipped
+    var from = Math.max(0, vt.timestamp_from - 200);
+    var to = vt.timestamp_to;
+    var finished = false;
+
+    function finish(){
+      if (finished || token !== playToken) return;
+      finished = true;
+      a.pause();
+      if (onEnd) onEnd();
+    }
+    function begin(){
+      if (token !== playToken) return;
+      a.currentTime = from / 1000;
+      a.playbackRate = speed;
+      a.onended = null;
+      a.ontimeupdate = function(){
+        if (token !== playToken) return;
+        if (a.currentTime * 1000 >= to - 40) finish();
+      };
+      a.onerror = function(){
+        if (token !== playToken) return;
+        gaplessNow = null;
+        if (onError) onError();
+        else if (onEnd) onEnd();
+      };
+      var p = a.play();
+      if (p && p.catch) p.catch(function(){});
+    }
+
+    if (gaplessSrc !== timings.url){
+      gaplessSrc = timings.url;
+      a.onended = null;
+      a.ontimeupdate = null;
+      a.onerror = function(){
+        if (token !== playToken) return;
+        gaplessSrc = "";
+        gaplessNow = null;
+        if (onError) onError();
+        else if (onEnd) onEnd();
+      };
+      a.src = timings.url;
+      a.addEventListener("loadedmetadata", function onMeta(){
+        a.removeEventListener("loadedmetadata", onMeta);
+        begin();
+      });
+    } else {
+      begin();
+    }
   }
 
+  var speed = 1;
+  var rangeQueue = null; // active range playback: {surah, from, to, repeat, ayah, rep, token, paused, errStreak, pending, gapless}
+
   window.Reciter = {
-    // full-ayah playback (Alafasy)
+    // verse timings for a surah (shared with the karaoke feature — one fetch, one cache).
+    // Resolves {url, verses} or null; verses[ayah-1] = {timestamp_from, timestamp_to, segments}
+    timings: function(surah){ return loadTimings(surah); },
+
+    // truthy {surah} while the shared element is playing that surah's gapless file —
+    // karaoke uses ABSOLUTE segment times in that mode, verse_from-relative otherwise
+    playingGapless: function(){ return gaplessNow; },
+
+    // full-ayah playback: gapless when timings are reachable, per-ayah file otherwise
     playAyah: function(surah, ayah, onEnd, onError){
       rangeQueue = null; // a tap-play always interrupts an active range
-      return playUrl(ayahAudioUrl(surah, ayah), onEnd, onError);
+      var call = ++playCallSeq;
+      loadTimings(surah).then(function(t){
+        if (call !== playCallSeq) return; // superseded by a newer play request
+        if (t) playGaplessAyah(surah, ayah, t, onEnd, onError);
+        else playUrl(ayahAudioUrl(surah, ayah), onEnd, onError);
+      });
     },
     // single-word playback (word-by-word CDN set)
     playWord: function(surah, ayah, wordOrdinal, onEnd, onError){
@@ -97,7 +196,16 @@
     stop: function(){
       rangeQueue = null;
       playToken++;
-      if (el){ el.pause(); el.removeAttribute("src"); el.load(); }
+      if (el){
+        el.pause();
+        el.ontimeupdate = null;
+        el.onended = null;
+        el.onerror = null;
+        el.removeAttribute("src");
+        el.load();
+      }
+      gaplessNow = null;
+      gaplessSrc = "";
     },
     setSpeed: function(rate){
       speed = rate;
@@ -111,15 +219,13 @@
     // (offline / CDN down) abort the range via onError instead of burning through it.
     startRange: function(surah, from, to, repeat, onProgress, onDone, onError){
       playToken++;
-      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false, errStreak: 0 };
+      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false, errStreak: 0, pending: true, gapless: null };
       var queue = rangeQueue;
 
       function step(){
         if (rangeQueue !== queue) return;
         onProgress(queue.ayah, queue.rep);
-        var nextIsRepeat = queue.rep < queue.repeat;
-        var nextIsAyah = queue.ayah < queue.to;
-        if (nextIsRepeat || nextIsAyah) preload(ayahAudioUrl(surah, nextIsRepeat ? queue.ayah : queue.ayah + 1));
+        var vt = queue.gapless && queue.gapless.verses[queue.ayah - 1];
         function advance(){
           if (rangeQueue !== queue) return;
           if (queue.rep < queue.repeat){ queue.rep++; }
@@ -127,17 +233,30 @@
           else { rangeQueue = null; onDone(); return; }
           step();
         }
-        playUrl(ayahAudioUrl(surah, queue.ayah), function(){
-          queue.errStreak = 0;
-          advance();
-        }, function(){
+        function onFail(){
           queue.errStreak++;
           if (queue.errStreak >= 3){ rangeQueue = null; if (onError) onError(); return; }
           advance();
-        });
+        }
+        if (vt){
+          playGaplessAyah(queue.surah, queue.ayah, queue.gapless, function(){ queue.errStreak = 0; advance(); }, onFail);
+        } else {
+          // fallback per-file path: warm the next ayah while this one plays
+          var nextIsRepeat = queue.rep < queue.repeat;
+          var nextIsAyah = queue.ayah < queue.to;
+          if (nextIsRepeat || nextIsAyah) preload(ayahAudioUrl(surah, nextIsRepeat ? queue.ayah : queue.ayah + 1));
+          playUrl(ayahAudioUrl(surah, queue.ayah), function(){ queue.errStreak = 0; advance(); }, onFail);
+        }
       }
 
-      step();
+      // the queue exists immediately (silent-reveal guards + UI depend on rangeActive),
+      // but playback waits for the timings lookup so the very first ayah can be gapless
+      loadTimings(surah).then(function(t){
+        if (rangeQueue !== queue) return;
+        queue.pending = false;
+        queue.gapless = t;
+        step();
+      });
       return queue;
     },
     rangeActive: function(){ return !!rangeQueue; },
@@ -152,12 +271,29 @@
       if (!rangeQueue) return;
       rangeQueue = null;
       playToken++;
-      if (el){ el.pause(); el.removeAttribute("src"); el.load(); }
+      if (el){
+        el.pause();
+        el.ontimeupdate = null;
+        el.onended = null;
+        el.onerror = null;
+        el.removeAttribute("src");
+        el.load();
+      }
+      gaplessNow = null;
+      gaplessSrc = "";
     },
 
     // test/inspection hooks (used by the browser-tool verification, muted so autoplay
     // policies don't block headless play)
     _el: function(){ return ensureEl(); },
-    _urls: { ayah: ayahAudioUrl, word: wordAudioUrl, global: globalAyahNumber, preload: preload }
+    _urls: { ayah: ayahAudioUrl, word: wordAudioUrl, global: globalAyahNumber }
   };
+
+  // prefetch helper — warm the browser's HTTP cache for the next ayah on the fallback
+  // per-file path (gapless needs no prefetch: one file serves the whole surah)
+  function preload(url){
+    var pre = new Audio();
+    pre.preload = "auto";
+    pre.src = url;
+  }
 })(window);

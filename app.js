@@ -312,27 +312,13 @@
 
   // ---------- karaoke reveal ("buka kata otomatis mengikuti bacaan") ----------
   // While an ayah plays, its still-hidden words reveal one by one, each as it's recited.
-  // Word timings come from Quran.com's QDC segments API — Alafasy murattal is reciter id 7
-  // there (coincidentally the same number as the legacy v4 recitation id): each verse
-  // carries segments [wordPosition, startMs, endMs], ABSOLUTE in the surah's gapless file.
-  // Subtracting the verse's own timestamp_from maps them onto the per-ayah files we play —
-  // verified: the per-ayah files track the gapless blocks within ~60ms, imperceptible.
-  // A fetch failure just leaves the feature inert (words stay hidden) — never fatal.
-  var KARAOKE_RECITER = 7;
-  var karaokeSegCache = Object.create(null); // surah -> verse_timings (failures cached as [])
+  // Word timings come from the engine's QDC segments cache (audio.js loadTimings — the
+  // same data gapless playback seeks by, so one fetch serves both). Ayah playback prefers
+  // the surah's GAPLESS file — currentTime then runs in the same absolute timeline as the
+  // segments and sync is exact; only on the per-ayah-file fallback are starts shifted by
+  // the verse's own timestamp_from (±60ms there, verified). A timings fetch failure just
+  // leaves the feature inert (words stay hidden) — never fatal.
   var karaoke = null; // active ayah's reveal state, see beginKaraoke
-
-  function loadKaraokeTimings(surah){
-    if (karaokeSegCache[surah]) return Promise.resolve(karaokeSegCache[surah]);
-    return fetch("https://api.quran.com/api/qdc/audio/reciters/" + KARAOKE_RECITER +
-        "/audio_files?chapter=" + surah + "&segments=true")
-      .then(function(r){ return r.ok ? r.json() : null; })
-      .then(function(j){
-        karaokeSegCache[surah] = (j && j.audio_files && j.audio_files[0] && j.audio_files[0].verse_timings) || [];
-        return karaokeSegCache[surah];
-      })
-      .catch(function(){ karaokeSegCache[surah] = []; return karaokeSegCache[surah]; });
-  }
 
   function beginKaraoke(pair){
     karaoke = null;
@@ -363,11 +349,15 @@
     wireKaraokeTick();
     var state = { surah: pair[0], ayah: pair[1], page: currentPage, ordinalEndIdx: ordinalEndIdx, maxOrdinal: maxOrdinal, applied: applied, starts: null };
     karaoke = state;
-    loadKaraokeTimings(pair[0]).then(function(timings){
+    Reciter.timings(pair[0]).then(function(timings){
       if (karaoke !== state) return; // playback moved on while fetching
-      var vt = timings[pair[1] - 1];
+      var vt = timings && timings.verses[pair[1] - 1];
       if (!vt || !vt.segments) return;
-      state.starts = vt.segments.map(function(seg){ return seg[1] - vt.timestamp_from; });
+      var g = Reciter.playingGapless();
+      var absolute = !!(g && g.surah === pair[0]);
+      state.starts = vt.segments.map(function(seg){
+        return absolute ? seg[1] : seg[1] - vt.timestamp_from;
+      });
     });
   }
 
