@@ -440,8 +440,9 @@
   .audio-bar{
     position:fixed;
     left:0; right:0;
-    bottom:var(--footer-h, 60px); /* reveal-controls' own height — but see syncFixedBarOffsets:
-       app.js bakes BOTH bars into --footer-h, so this lands the audio bar right on top of it */
+    bottom:var(--reveal-h, 60px); /* flush on top of the reveal footer — its own height is
+       deliberately NOT part of this var (see syncFixedBarOffsets: --footer-h, the reader's
+       padding, is the one that includes both bars) */
     z-index:11;
     background:linear-gradient(180deg,#173626,#122a1d);
     border-top:1px solid #0a1610;
@@ -1000,6 +1001,31 @@
 
     /* phone landscape is swipe territory too — page-nav stays hidden */
     #prevPage, #nextPage{ display:none; }
+
+    /* the audio bar is a compact bottom-LEFT pill here (the reveal footer is a centered right
+       column, and a full-width bottom bar would eat the little height this orientation has);
+       its panel expands upward from the pill, anchored to the left edge */
+    .audio-bar{
+      left:8px; right:auto; bottom:8px;
+      width:auto;
+      border:1px solid #0a1610;
+      border-radius:10px;
+    }
+    .audio-bar-head{ padding:6px 12px; font-size:11.5px; }
+    .audio-panel{
+      position:absolute;
+      bottom:100%; left:-8px;
+      width:min(320px, calc(100vw - 16px));
+      margin-bottom:8px;
+      border:1px solid #0a1610;
+      border-radius:10px;
+      background:linear-gradient(180deg,#173626,#122a1d);
+    }
+    .ab-credit{ white-space:normal; }
+
+    /* the bottom edge is chrome-free in this orientation (the reveal column is right-side,
+       the audio bar is a small overlay pill) — no reason to pad the reader by its heights */
+    .reader-scroll{ padding-bottom:12px; }
 
     /* no persistent left rail anymore — the edge fabs overlay the page, so the shell starts
        at the very left; the right margin matches the right rail's fixed 96px width (below)

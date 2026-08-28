@@ -803,6 +803,9 @@
     var audioBarEl = document.querySelector(".audio-bar");
     if (!headerEl || !footerEl) return;
     document.documentElement.style.setProperty("--header-h", headerEl.offsetHeight + "px");
+    // the audio bar docks flush on top of the reveal footer (its own height excluded), while
+    // the reader's bottom padding must clear BOTH bars plus breathing room
+    document.documentElement.style.setProperty("--reveal-h", footerEl.offsetHeight + "px");
     var bottomH = footerEl.offsetHeight + (audioBarEl ? audioBarEl.offsetHeight : 0);
     document.documentElement.style.setProperty("--footer-h", (bottomH + 16) + "px");
   }
