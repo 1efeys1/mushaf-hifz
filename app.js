@@ -269,6 +269,9 @@
     var bar = document.getElementById("audioBar");
     document.getElementById("audioBarToggle").addEventListener("click", function(){
       bar.classList.toggle("open");
+      // fields follow the current reading position each time the panel is opened (unless a
+      // range is already playing — don't yank the controls out from under it)
+      if (bar.classList.contains("open") && !Reciter.rangeActive()) syncRangeToReadingPosition();
       syncFixedBarOffsets(); // the expanded panel changes what the reader must pad for
     });
     var cb = document.getElementById("tapPlayToggle");
@@ -281,9 +284,32 @@
     wireRangeControls();
   }
 
+  // point the range fields at what's currently open: the ayah under the reveal cursor (or
+  // the page's first ayah when nothing is revealed yet) through the last ayah of that same
+  // surah on this page — "play what I'm reading", not a stale persisted page
+  function syncRangeToReadingPosition(){
+    var ayahList = getPageWordAyahList(currentPage);
+    if (!ayahList.length) return;
+    var cursor = pageCursor[currentPage] || 0;
+    var pair = ayahList[Math.min(cursor, ayahList.length - 1)];
+    var surah = pair[0], from = pair[1], to = from;
+    for (var i = ayahList.length - 1; i >= 0; i--){
+      if (ayahList[i][0] === surah){ to = ayahList[i][1]; break; }
+    }
+    audioPrefs.surah = surah;
+    audioPrefs.from = from;
+    audioPrefs.to = to;
+    saveAudioPrefs();
+    refreshRangeControls();
+  }
+
   function rangeStatus(text){
     document.getElementById("rangeStatus").textContent = text;
   }
+
+  // reassigned by wireRangeControls once the controls exist — syncRangeToReadingPosition
+  // calls it through this indirection
+  var refreshRangeControls = function(){};
 
   function wireRangeControls(){
     var surahSel = document.getElementById("rangeSurah");
@@ -341,10 +367,13 @@
       saveAudioPrefs();
     });
 
-    surahSel.value = String(audioPrefs.surah);
-    repeatSel.value = String(audioPrefs.repeat);
-    speedSel.value = String(audioPrefs.speed);
-    clampRange();
+    refreshRangeControls = function(){
+      surahSel.value = String(audioPrefs.surah);
+      repeatSel.value = String(audioPrefs.repeat);
+      speedSel.value = String(audioPrefs.speed);
+      clampRange();
+    };
+    refreshRangeControls();
     Reciter.setSpeed(audioPrefs.speed);
 
     document.getElementById("rangePlay").addEventListener("click", function(){
