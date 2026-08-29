@@ -288,6 +288,17 @@
     });
   }
 
+  // one place for "a page just rendered" playback bookkeeping: re-light the playing
+  // ayah, restart its karaoke state (so playback survives page advances mid-ayah — the
+  // reveal catches up in one batch once the page's data lands), and keep following it
+  function afterPageRender(){
+    applyPlayingHighlight();
+    if (playingAyah && Reciter.rangeActive()){
+      beginKaraoke(playingAyah);
+      if (audioPrefs.autoScroll) scrollPlayingAyahIntoView();
+    }
+  }
+
   // follow-the-recitation: bring a newly-started range ayah into view. With auto-scroll
   // ON it centers on every ayah change (the mobile/zoomed reading-along mode); OFF keeps
   // the original conservative behavior — only when the ayah is off-screen, so the user's
@@ -515,6 +526,9 @@
   // reassigned by wireRangeControls once the controls exist — syncRangeToReadingPosition
   // calls it through this indirection
   var refreshRangeControls = function(){};
+  // true between a ▶ click and its (possibly navigation-delayed) start — suppresses the
+  // updateStatus field re-sync so it can't rewrite the range the user just asked for
+  var rangeStartPending = false;
 
   function wireRangeControls(){
     var surahSel = document.getElementById("rangeSurah");
@@ -596,12 +610,25 @@
         if (Reciter.rangePaused()) Reciter.resumeRange();
         return;
       }
+      // capture the fields NOW: the navigation below re-renders, whose updateStatus would
+      // otherwise re-sync audioPrefs to the reading position AFTER the user set them but
+      // BEFORE start() consumes them — the range used to silently become something else
+      // (set 6-11, heard 8-14)
+      var surah = audioPrefs.surah, from = audioPrefs.from, to = audioPrefs.to, repeat = audioPrefs.repeat;
+      rangeStartPending = true;
       function start(){
-        Reciter.startRange(audioPrefs.surah, audioPrefs.from, audioPrefs.to, audioPrefs.repeat,
+        rangeStartPending = false;
+        Reciter.startRange(surah, from, to, repeat,
           function(ayah, rep){
-            setPlayingAyah([audioPrefs.surah, ayah]);
-            scrollPlayingAyahIntoView();
-            rangeStatus(audioPrefs.surah + ":" + ayah + " · ulangan " + rep + "/" + audioPrefs.repeat);
+            setPlayingAyah([surah, ayah]);
+            if (audioPrefs.autoScroll){
+              // the recitation crossing onto another page takes the reader along — the
+              // render chain (afterPageRender) picks up highlight, karaoke and centering
+              var page = ayahJumpAvailable ? AYAH_PAGE[surah - 1][ayah - 1] : 0;
+              if (page && page !== currentPage) goToPage(page);
+              else scrollPlayingAyahIntoView();
+            }
+            rangeStatus(surah + ":" + ayah + " · ulangan " + rep + "/" + repeat);
           },
           function(){
             setPlayingAyah(null);
@@ -616,10 +643,13 @@
       // a range whose first ayah isn't on the open page would play invisibly (highlight,
       // karaoke and scroll-follow all key off the CURRENT page) — take the reader there
       // first and start once the page data is in, so the very first ayah syncs too
-      var startPage = ayahJumpAvailable ? AYAH_PAGE[audioPrefs.surah - 1][audioPrefs.from - 1] : 0;
+      var startPage = ayahJumpAvailable ? AYAH_PAGE[surah - 1][from - 1] : 0;
       if (startPage && startPage !== currentPage){
         goToPage(startPage);
-        loadPageLines(startPage).then(function(){ if (currentPage === startPage) start(); });
+        loadPageLines(startPage).then(function(){
+          if (currentPage === startPage) start();
+          else rangeStartPending = false; // user navigated elsewhere — un-suppress the re-sync
+        }).catch(function(){ rangeStartPending = false; });
       } else {
         start();
       }
@@ -1537,11 +1567,11 @@
 
     updateStatus(surahsOnPage);
     fitLinesToWidth();
-    applyPlayingHighlight(); // innerHTML swap above wiped the .playing spans
     if (!skipScrollReset){
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
     }
+    afterPageRender(); // after the scroll reset, so centering on the playing ayah wins
   }
 
   // "ayah" view mode — word-by-word + full-ayah Indonesian translation, continuous reading
@@ -1627,11 +1657,11 @@
 
     if (surahsOnPage.length) highlightActiveSurah(surahsOnPage[0]);
     updateStatus(surahsOnPage);
-    applyPlayingHighlight(); // same innerHTML-swap wipe as mushaf mode above
     if (!skipScrollReset){
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
     }
+    afterPageRender(); // after the scroll reset, so centering on the playing ayah wins
   }
 
   function updateStatus(surahsOnPage){
@@ -1643,8 +1673,9 @@
     syncFixedBarOffsets(); // toolbar can wrap to a second line depending on the text above
     // keep the audio panel's range fields pointing at what's open — they used to sync only
     // on panel-open, so an already-open panel went stale after navigation and ▶ played the
-    // previous surah's range
-    if (document.getElementById("audioBar").classList.contains("open") && !Reciter.rangeActive()){
+    // previous surah's range. Suppressed while a ▶ start is pending its page navigation.
+    if (!rangeStartPending &&
+        document.getElementById("audioBar").classList.contains("open") && !Reciter.rangeActive()){
       syncRangeToReadingPosition();
     }
   }
