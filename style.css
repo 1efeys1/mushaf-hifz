@@ -164,10 +164,18 @@
     color:#9fae97;
   }
   .ayah-jump input{
-    width:5em;
+    width:5.5em;
     padding:5px 7px;
     text-align:center;
   }
+  /* number spinners eat ~15px of the content box on mobile Chrome and clipped "189" to
+     "18" — the ➔ button is this row's action, steppers are dead weight */
+  .ayah-jump input::-webkit-outer-spin-button,
+  .ayah-jump input::-webkit-inner-spin-button{
+    -webkit-appearance:none;
+    margin:0;
+  }
+  .ayah-jump input[type="number"]{ -moz-appearance:textfield; appearance:textfield; }
   .ayah-jump button{
     background:transparent;
     border:1px solid #345342;
