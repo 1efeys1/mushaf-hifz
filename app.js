@@ -353,8 +353,20 @@
       if (ordinalEndIdx[o] !== undefined && ordinalEndIdx[o] < cursor) applied = o;
     }
 
+    // group the ayah's spans by ordinal once: ayah view renders ONE span per word entry
+    // (whose data-idx is only the entry's FIRST segment), so the tick can't use idx-range
+    // checks — it reveals whole ordinal groups instead
+    var spansByOrdinal = [];
+    document.getElementById("mushafPage").querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+      var idx = +el.dataset.idx;
+      if (idx < lo || idx > hi) return;
+      var ord = ords[idx];
+      if (!ord) return;
+      (spansByOrdinal[ord] = spansByOrdinal[ord] || []).push(el);
+    });
+
     wireKaraokeTick();
-    var state = { surah: pair[0], ayah: pair[1], page: currentPage, ordinalEndIdx: ordinalEndIdx, maxOrdinal: maxOrdinal, applied: applied, starts: null };
+    var state = { surah: pair[0], ayah: pair[1], page: currentPage, ordinalEndIdx: ordinalEndIdx, spansByOrdinal: spansByOrdinal, maxOrdinal: maxOrdinal, applied: applied, starts: null };
     karaoke = state;
     Reciter.timings(pair[0]).then(function(timings){
       if (karaoke !== state) return; // playback moved on while fetching
@@ -379,24 +391,22 @@
       var target = 0;
       while (target < karaoke.starts.length && karaoke.starts[target] <= t) target++;
       if (target <= karaoke.applied) return;
-      karaoke.applied = target;
-      var endIdx = karaoke.ordinalEndIdx[Math.min(target, karaoke.maxOrdinal)];
+      var newMax = Math.min(target, karaoke.maxOrdinal);
+      var endIdx = karaoke.ordinalEndIdx[newMax];
       if (endIdx === undefined) return;
       var cursor = pageCursor[currentPage] || 0;
-      if (cursor >= endIdx + 1) return; // the user already revealed past this word
-      // reveal IN PLACE — a full renderPage() per word rebuilt the page's innerHTML and
-      // made everything on it (previous ayat's gold wash included) blink on every word.
-      // The badge/sajda spans share the last word's data-idx, so they light with it —
-      // exactly the renderers' own numRevealed rule.
-      var container = document.getElementById("mushafPage");
+      if (cursor >= endIdx + 1){ karaoke.applied = newMax; return; } // the user already revealed past this word
+      // reveal IN PLACE, one ordinal group at a time — a full renderPage() per word rebuilt
+      // the page's innerHTML and made everything on it (previous ayat's gold wash included)
+      // blink on every word
       var lastSpan = null;
-      container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
-        var idx = +el.dataset.idx;
-        if (idx >= cursor && idx <= endIdx){
+      for (var o = karaoke.applied + 1; o <= newMax; o++){
+        (karaoke.spansByOrdinal[o] || []).forEach(function(el){
           el.classList.add("revealed");
           if (el.classList.contains("word")) lastSpan = el;
-        }
-      });
+        });
+      }
+      karaoke.applied = newMax;
       pageCursor[currentPage] = endIdx + 1;
       // auto-scroll line-follow: keep the LINE being recited inside a comfort band
       // (mushaf mode anchors the whole .mushaf-line, ayat mode the word's own box) —
@@ -432,7 +442,10 @@
     } else if (pageAyahBlocksCache[pageNo]){
       pageAyahBlocksCache[pageNo].forEach(function(block){
         if (block[0] !== "ayah") return;
-        for (var i = 0; i < block[4].length; i++) ords.push(block[6] + i);
+        // per-segment expansion matching the lines branch (see getPageWordAyahList)
+        block[4].forEach(function(pair, wi){
+          for (var si = 0; si < pair[0].split(" ").length; si++) ords.push(block[6] + wi);
+        });
       });
     }
     if (ords.length) pageWordOrdinalCache[pageNo] = ords;
@@ -810,7 +823,13 @@
     } else if (pageAyahBlocksCache[pageNo]){
       pageAyahBlocksCache[pageNo].forEach(function(block){
         if (block[0] !== "ayah") return;
-        for (var i = 0; i < block[4].length; i++) list.push([block[1], block[2]]);
+        // per-SEGMENT expansion, exactly like the lines branch above — the two branches
+        // must produce IDENTICAL lists: the reveal cursor and data-idx are page-wide and
+        // shared across view modes, and a page first loaded in ayah view used to build a
+        // shorter (per-entry) list that silently misaligned everything after a mode switch
+        block[4].forEach(function(pair){
+          for (var i = 0; i < pair[0].split(" ").length; i++) list.push([block[1], block[2]]);
+        });
       });
     } else {
       return []; // neither loaded yet — caller should retry after its load resolves
@@ -1563,13 +1582,15 @@
           var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
           var revealed = wordIndex < cursor || isHintWord;
           // whole-entry tajweed here (one span per word entry in this view — no per-segment
-          // alignment needed, unlike mushaf mode's space-split rendering)
+          // alignment needed, unlike mushaf mode's space-split rendering). data-idx still
+          // advances per SEGMENT though (waqf-split entries count multiple), so the shared
+          // page-wide cursor/word lists line up exactly with mushaf mode's numbering
           var arHtml = pair[2] ? tajweedToHtml(pair[2]) : pair[0];
           html += '<div class="ayah-word">' +
             '<span class="word aw-ar' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '">' + arHtml + '</span>' +
             (pair[1] ? '<span class="aw-gloss">' + pair[1] + '</span>' : "") +
           '</div>';
-          wordIndex++;
+          wordIndex += pair[0].split(" ").length;
         });
         var numRevealed = wordIndex - 1 < cursor || hintWordCount > 0;
         html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">' + toArabicDigits(ayah) + '</span>' +
@@ -1620,6 +1641,12 @@
     }).join('<span class="ss-sep"> · </span>');
     document.getElementById("surahStatus").innerHTML = html;
     syncFixedBarOffsets(); // toolbar can wrap to a second line depending on the text above
+    // keep the audio panel's range fields pointing at what's open — they used to sync only
+    // on panel-open, so an already-open panel went stale after navigation and ▶ played the
+    // previous surah's range
+    if (document.getElementById("audioBar").classList.contains("open") && !Reciter.rangeActive()){
+      syncRangeToReadingPosition();
+    }
   }
 
   // ---------------- keep each mushaf line on one visual row ----------------
