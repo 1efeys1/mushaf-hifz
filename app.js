@@ -199,12 +199,13 @@
   var RANGE_REPEAT_MAX = 10;
 
   function loadAudioPrefs(){
-    var prefs = { tapPlay: true, syncReveal: false, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
+    var prefs = { tapPlay: true, syncReveal: false, autoScroll: true, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
     try{
       var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
       if (raw && typeof raw === "object"){
         if (typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
         if (typeof raw.syncReveal === "boolean") prefs.syncReveal = raw.syncReveal;
+        if (typeof raw.autoScroll === "boolean") prefs.autoScroll = raw.autoScroll;
         if (Number.isInteger(raw.surah) && raw.surah >= 1 && raw.surah <= 114) prefs.surah = raw.surah;
         if (Number.isInteger(raw.from) && raw.from >= 1) prefs.from = raw.from;
         if (Number.isInteger(raw.to) && raw.to >= 1) prefs.to = raw.to;
@@ -287,11 +288,17 @@
     });
   }
 
-  // follow-the-recitation: bring a newly-started range ayah into view (only when it's
-  // off-screen — never yanks the page while the user reads where they want)
+  // follow-the-recitation: bring a newly-started range ayah into view. With auto-scroll
+  // ON it centers on every ayah change (the mobile/zoomed reading-along mode); OFF keeps
+  // the original conservative behavior — only when the ayah is off-screen, so the user's
+  // own scrolling is never yanked
   function scrollPlayingAyahIntoView(){
     var el = document.querySelector("#mushafPage .playing");
     if (!el) return;
+    if (audioPrefs.autoScroll){
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+      return;
+    }
     var r = el.getBoundingClientRect();
     if (r.top < 0 || r.bottom > window.innerHeight){
       el.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -381,11 +388,26 @@
       // made everything on it (previous ayat's gold wash included) blink on every word.
       // The badge/sajda spans share the last word's data-idx, so they light with it —
       // exactly the renderers' own numRevealed rule.
-      document.getElementById("mushafPage").querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+      var container = document.getElementById("mushafPage");
+      var lastSpan = null;
+      container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
         var idx = +el.dataset.idx;
-        if (idx >= cursor && idx <= endIdx) el.classList.add("revealed");
+        if (idx >= cursor && idx <= endIdx){
+          el.classList.add("revealed");
+          if (el.classList.contains("word")) lastSpan = el;
+        }
       });
       pageCursor[currentPage] = endIdx + 1;
+      // auto-scroll line-follow: keep the LINE being recited inside a comfort band
+      // (mushaf mode anchors the whole .mushaf-line, ayat mode the word's own box) —
+      // scrolling only fires when the recitation leaves the band, not on every word
+      if (audioPrefs.autoScroll && lastSpan){
+        var anchor = lastSpan.closest(".mushaf-line") || lastSpan.closest(".ayah-word") || lastSpan;
+        var ar = anchor.getBoundingClientRect();
+        if (ar.top < innerHeight * 0.15 || ar.bottom > innerHeight * 0.85){
+          anchor.scrollIntoView({ block: "center", behavior: "smooth" });
+        }
+      }
     });
   }
 
@@ -443,6 +465,12 @@
       if (!audioPrefs.syncReveal) karaoke = null;
       // turning it on mid-playback picks the ayah up from wherever it currently is
       else if (playingAyah) beginKaraoke(playingAyah);
+    });
+    var scroll = document.getElementById("autoScrollToggle");
+    scroll.checked = audioPrefs.autoScroll;
+    scroll.addEventListener("change", function(e){
+      audioPrefs.autoScroll = e.target.checked;
+      saveAudioPrefs();
     });
     applyTapPlayUI();
     wireRangeControls();
@@ -840,14 +868,16 @@
         '</div>' +
         '<button class="surah-go" type="button" title="Langsung ke ayat 1">Go</button>';
       item.addEventListener("click", function(){
-        goToPage(firstPage);
-        if (isOverlaySidebarMode()) shell.classList.add("collapsed");
+        // a row tap only PINS the ayah-jump target — navigation is Go (ayat 1) or ➔ (typed
+        // ayat), so the sidebar stays open for the ayat to be chosen
+        ayahJumpPinned = number;
+        refreshAyahJumpTarget();
       });
       // Go = straight to ayat 1 with the full jump treatment (reveal-through + scroll +
-      // flash); tapping the row itself keeps plain page navigation so the ayat can be
-      // picked afterwards via the "Ayat ke-" row
+      // flash)
       item.querySelector(".surah-go").addEventListener("click", function(ev){
         ev.stopPropagation();
+        ayahJumpPinned = null;
         goToAyah(number, 1, firstPage);
         if (isOverlaySidebarMode()) shell.classList.add("collapsed");
       });
@@ -874,7 +904,10 @@
       // name match outranks substring ones whenever any exist
       if (variants.indexOf(el.dataset.searchName) !== -1) exacts.push(el);
     });
-    (exacts.length ? exacts : hits).forEach(function(el){ el.style.display = "flex"; });
+    var winners = exacts.length ? exacts : hits;
+    document.querySelectorAll(".surah-item").forEach(function(el){ el.style.display = "none"; });
+    winners.forEach(function(el){ el.style.display = "flex"; });
+    ayahJumpPinned = null; // typing re-filters — the pin gives way to the match again
     refreshAyahJumpTarget();
   });
 
@@ -889,8 +922,10 @@
   // brief gold flash on the target ayah.
   var ayahJumpAvailable = typeof AYAH_PAGE !== "undefined";
   if (!ayahJumpAvailable) document.getElementById("ayahJumpRow").style.display = "none";
+  var ayahJumpPinned = null; // surah picked by tapping its row — overrides filter/active
 
   function ayahJumpTargetSurah(){
+    if (ayahJumpPinned) return ayahJumpPinned;
     // empty search → the surah open on the page (not "first list item": an unfiltered
     // list always starts at Al-Fatihah, which made the label show 1. Al-Faatihah while
     // reading Al-A'raaf — exactly the stale-target report)
@@ -919,6 +954,7 @@
     var a = parseInt(document.getElementById("ayahJumpInput").value, 10);
     if (!s || !a || a < 1) return;
     if (a > SURAH_META[s - 1][5]) a = SURAH_META[s - 1][5]; // clamp to the surah's last ayah
+    ayahJumpPinned = null; // the jump consumed the pin
     goToAyah(s, a, AYAH_PAGE[s - 1][a - 1]);
   }
 
