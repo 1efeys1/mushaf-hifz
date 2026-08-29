@@ -575,6 +575,14 @@
     Reciter.setSpeed(audioPrefs.speed);
 
     document.getElementById("rangePlay").addEventListener("click", function(){
+      // gapless playback can take a second or two before the first sound — an impatient
+      // second ▶ used to spawn a fresh queue that re-seeked the shared element to the
+      // ayah's start, so the opening audibly played twice. ▶ is idempotent now: running
+      // range = no-op, paused range = resume. Stop first to restart.
+      if (Reciter.rangeActive()){
+        if (Reciter.rangePaused()) Reciter.resumeRange();
+        return;
+      }
       function start(){
         Reciter.startRange(audioPrefs.surah, audioPrefs.from, audioPrefs.to, audioPrefs.repeat,
           function(ayah, rep){
