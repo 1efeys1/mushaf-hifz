@@ -385,8 +385,16 @@
       if (!vt || !vt.segments) return;
       var g = Reciter.playingGapless();
       var absolute = !!(g && g.surah === pair[0]);
-      state.starts = vt.segments.map(function(seg){
-        return absolute ? seg[1] : seg[1] - vt.timestamp_from;
+      // the reciter sometimes breathes mid-ayah and repeats a word — the alignment data
+      // then lists that word position TWICE. Reveal on its FIRST utterance and drop the
+      // duplicates, otherwise every following word reveals one word early for the rest
+      // of the ayah (the tick counts segments, and a duplicate inflates the count).
+      var seen = Object.create(null);
+      state.starts = [];
+      vt.segments.forEach(function(seg){
+        if (seen[seg[0]]) return;
+        seen[seg[0]] = true;
+        state.starts.push(absolute ? seg[1] : seg[1] - vt.timestamp_from);
       });
     });
   }
