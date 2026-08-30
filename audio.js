@@ -114,9 +114,12 @@
     playToken++;
     var token = playToken;
     gaplessNow = { surah: surah };
-    // segment marks can slice a hair before the verse boundary (−55ms seen on 3:189) —
-    // start slightly early so the first syllable is never clipped
-    var from = Math.max(0, vt.timestamp_from - 200);
+    // zero-overlap verse boundaries: the watchdog ends each verse at to−40 and the next
+    // starts at from−40 (contiguous in the gapless stream). A wider pre-roll used to
+    // replay the boundary region — including the first syllable of ayat whose word marks
+    // start slightly before their verse_from — audibly doubling every ayah's opening
+    // ("al-alladzi…"). −40 still covers the observed early marks.
+    var from = Math.max(0, vt.timestamp_from - 40);
     var to = vt.timestamp_to;
     var finished = false;
 
@@ -128,12 +131,17 @@
     }
     function begin(){
       if (token !== playToken) return;
-      a.currentTime = from / 1000;
-      a.playbackRate = speed;
       a.onended = null;
+      // 'timeupdate' only fires every ~250ms, letting the verse end overshoot into the
+      // next verse's opening (a late pause + seek-back = the doubled-start bug again) —
+      // a tight poll lands the boundary within ~60ms
+      var pollIv = setInterval(function(){
+        if (token !== playToken || finished){ clearInterval(pollIv); return; }
+        if (a.currentTime * 1000 >= to - 40){ clearInterval(pollIv); finish(); }
+      }, 60);
       a.ontimeupdate = function(){
         if (token !== playToken) return;
-        if (a.currentTime * 1000 >= to - 40) finish();
+        if (a.currentTime * 1000 >= to - 40){ clearInterval(pollIv); finish(); }
       };
       a.onerror = function(){
         if (token !== playToken) return;
@@ -141,8 +149,26 @@
         if (onError) onError();
         else if (onEnd) onEnd();
       };
-      var p = a.play();
-      if (p && p.catch) p.catch(function(){});
+      // play only once the seek has actually landed — calling play() on a pending seek
+      // lets mobile Chrome render from the OLD position first, replaying the boundary
+      // audio before the jump (a safety timeout covers same-position seeks that fire no
+      // 'seeked' event)
+      a.currentTime = from / 1000;
+      a.playbackRate = speed;
+      var went = false;
+      function go(){
+        if (went || token !== playToken) return;
+        went = true;
+        if (rangeQueue && rangeQueue.paused) return; // pauseRange raced the seek
+        var p = a.play();
+        if (p && p.catch) p.catch(function(){});
+      }
+      var guard = setTimeout(go, 350);
+      a.addEventListener("seeked", function onSeeked(){
+        a.removeEventListener("seeked", onSeeked);
+        clearTimeout(guard);
+        go();
+      });
     }
 
     if (gaplessSrc !== timings.url){
