@@ -108,33 +108,37 @@
   var gaplessNow = null; // {surah} while the element plays a gapless file
   var gaplessSrc = ""; // the url currently loaded into the element, "" when per-file
 
-  function playGaplessAyah(surah, ayah, timings, onEnd, onError){
+  function playGaplessAyah(surah, ayah, timings, onEnd, onError, seamlessNext, chainEntry){
     var a = ensureEl();
     var vt = timings.verses[ayah - 1];
     playToken++;
     var token = playToken;
     gaplessNow = { surah: surah };
-    // zero-overlap verse boundaries: the watchdog ends each verse at to−40 and the next
-    // starts at from−40 (contiguous in the gapless stream). A wider pre-roll used to
-    // replay the boundary region — including the first syllable of ayat whose word marks
-    // start slightly before their verse_from — audibly doubling every ayah's opening
-    // ("al-alladzi…"). −40 still covers the observed early marks.
+    // verse boundaries sit at from−40/to−40, contiguous in the gapless stream. A wider
+    // pre-roll used to replay the boundary region — including the first syllable of ayat
+    // whose word marks start slightly before their verse_from — audibly doubling every
+    // ayah's opening ("al-alladzi…"). −40 still covers the observed early marks.
     var from = Math.max(0, vt.timestamp_from - 40);
     var to = vt.timestamp_to;
     var finished = false;
 
+    // seamless chaining: for a mid-range verse whose successor continues the same stream,
+    // the watchdog crossing to−40 does NOT pause/seek/play — the element just rolls
+    // through the boundary and the next call re-arms the watchdog (see the seamless entry
+    // below). pausing and re-playing the SAME position made mobile Chrome flush and
+    // replay its decoded-audio buffer, doubling every ayah's opening even though the
+    // event trace looked perfect.
     function finish(){
       if (finished || token !== playToken) return;
       finished = true;
-      a.pause();
+      if (!seamlessNext) a.pause();
       if (onEnd) onEnd();
     }
-    function begin(){
-      if (token !== playToken) return;
+
+    // (re)arm the boundary watchdog — 'timeupdate' alone fires only every ~250ms, letting
+    // a verse end overshoot into the next verse's opening; the 60ms poll lands it tight
+    function arm(){
       a.onended = null;
-      // 'timeupdate' only fires every ~250ms, letting the verse end overshoot into the
-      // next verse's opening (a late pause + seek-back = the doubled-start bug again) —
-      // a tight poll lands the boundary within ~60ms
       var pollIv = setInterval(function(){
         if (token !== playToken || finished){ clearInterval(pollIv); return; }
         if (a.currentTime * 1000 >= to - 40){ clearInterval(pollIv); finish(); }
@@ -149,6 +153,18 @@
         if (onError) onError();
         else if (onEnd) onEnd();
       };
+    }
+
+    // the previous verse's watchdog just crossed into this one and left the element
+    // rolling right here — re-arm only, no seek, no play, no pause
+    if (chainEntry){
+      arm();
+      return;
+    }
+
+    function begin(){
+      if (token !== playToken) return;
+      arm();
       // play only once the seek has actually landed — calling play() on a pending seek
       // lets mobile Chrome render from the OLD position first, replaying the boundary
       // audio before the jump (a safety timeout covers same-position seeks that fire no
@@ -245,7 +261,7 @@
     // (offline / CDN down) abort the range via onError instead of burning through it.
     startRange: function(surah, from, to, repeat, onProgress, onDone, onError){
       playToken++;
-      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false, errStreak: 0, pending: true, gapless: null };
+      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false, errStreak: 0, pending: true, gapless: null, rolled: false };
       var queue = rangeQueue;
 
       function step(){
@@ -265,7 +281,16 @@
           advance();
         }
         if (vt){
-          playGaplessAyah(queue.surah, queue.ayah, queue.gapless, function(){ queue.errStreak = 0; advance(); }, onFail);
+          // mid-range with no repeat left: the next verse continues the same gapless
+          // stream — chain it seamlessly (no pause/seek/play at the boundary, see
+          // playGaplessAyah). queue.rolled records that the element is still rolling
+          // from the previous verse's seamless finish, so the next call re-arms only.
+          var chainNext = queue.rep >= queue.repeat && queue.ayah < queue.to;
+          var entry = queue.rolled ? "chain" : undefined;
+          playGaplessAyah(queue.surah, queue.ayah, queue.gapless,
+            function(){ queue.errStreak = 0; advance(); }, onFail,
+            chainNext, entry);
+          queue.rolled = chainNext;
         } else {
           // fallback per-file path: warm the next ayah while this one plays
           var nextIsRepeat = queue.rep < queue.repeat;
