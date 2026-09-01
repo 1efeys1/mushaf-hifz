@@ -1275,13 +1275,13 @@
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
-        '<button id="nextPage"><span class="btn-label">Berikutnya ›</span></button>' +
+        '<button id="nextPage"><span class="btn-label">‹ Berikutnya</span></button>' +
         '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
         '<button id="ayahBtn" class="step">⏭ 1 Ayat</button>' +
         '<button id="spaceBtn" class="step">⎵ Lanjut</button>' +
         '<button id="backspaceBtn" class="step">⌫ Balik</button>' +
         '<button id="hideAll" class="minor" title="Sembunyikan semua">↺</button>' +
-        '<button id="prevPage"><span class="btn-label">‹ Sebelumnya</span></button>' +
+        '<button id="prevPage"><span class="btn-label">Sebelumnya ›</span></button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
