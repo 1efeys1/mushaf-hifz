@@ -11,7 +11,7 @@
     --veil:#E7DEC2;
     --sidebar-w:300px;
     --ayah-font:'Amiri Quran';
-    --ayah-size:36px;
+    --ayah-size:32px;
     --page-scale:1;
     --ayah-font-scale:1;
     /* set by app.js's syncFixedBarOffsets() from the actual rendered header/footer
