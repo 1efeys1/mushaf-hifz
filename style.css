@@ -703,6 +703,7 @@
     display:inline-block;
     vertical-align:top;
     text-align:center;
+    font-size:calc(var(--ayah-size) * var(--ayah-font-scale));
   }
   .wgloss{
     display:none;
