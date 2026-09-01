@@ -675,8 +675,11 @@
     margin:auto 0;
   }
   .mushaf-line{
-    text-align:justify;
-    text-align-last:justify;
+    display:flex;
+    flex-direction:row;
+    flex-wrap:nowrap;
+    justify-content:space-between;
+    align-items:flex-start;
     white-space:nowrap;
     line-height:2.15;
     margin:0;
@@ -690,8 +693,8 @@
   /* Center alignment for pages 1 and 2 */
   #mushafPage[data-page="1"] .mushaf-line,
   #mushafPage[data-page="2"] .mushaf-line{
-    text-align:center;
-    text-align-last:center;
+    justify-content:center;
+    gap:0;
   }
   .mushaf-line::-webkit-scrollbar{ display:none; }
   /* each mushaf word renders as a two-row cell: Arabic on top (reveal-cursor blur applies to
@@ -815,6 +818,8 @@
     filter:blur(7px);
     opacity:.5;
     transition:filter .22s ease, opacity .22s ease;
+    position:relative;
+    top:2.5em;
   }
   .num.revealed{ filter:blur(0); opacity:1; }
   .sajda-tag{

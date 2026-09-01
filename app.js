@@ -1543,7 +1543,6 @@
                 html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">' + toArabicDigits(ayah) + '</span>';
                 if (isSajdaAyah) html += '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + wordIndex + '">سجدة</span>';
               }
-              html += ' ';
               wordIndex++;
             }
           }
