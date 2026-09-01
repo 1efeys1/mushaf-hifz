@@ -11,7 +11,7 @@
     --veil:#E7DEC2;
     --sidebar-w:300px;
     --ayah-font:'Amiri Quran';
-    --ayah-size:26px;
+    --ayah-size:36px;
     --page-scale:1;
     --ayah-font-scale:1;
     /* set by app.js's syncFixedBarOffsets() from the actual rendered header/footer
@@ -602,16 +602,14 @@
       inset 0 0 0 8px var(--paper),
       inset 0 0 0 9px var(--gold-soft),
       inset 0 0 0 13px var(--paper);
-    padding:46px 40px 54px;
+    padding:46px 10px;
     overflow:hidden;
     transform-origin:top left;
     will-change:transform;
   }
   .mushaf-page::before{
     content:"";
-    position:absolute; inset:16px;
-    border:1px solid var(--gold-soft);
-    border-radius:2px;
+    position:absolute; inset:16px 1px;
     pointer-events:none;
     opacity:.55;
   }
