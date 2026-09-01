@@ -1496,6 +1496,7 @@
     var container = document.getElementById("mushafPage");
     var cursor = pageCursor[pageNo] || 0;
     var wordIndex = 0;
+    container.setAttribute("data-page", pageNo);
     var html = '<div class="ayat-flow">';
 
     linesOnPage.forEach(function(line){

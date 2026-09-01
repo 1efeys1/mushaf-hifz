@@ -689,6 +689,12 @@
        — hide it entirely (both engines), the scroll still works */
     scrollbar-width:none;
   }
+  /* Center alignment for pages 1 and 2 */
+  #mushafPage[data-page="1"] .mushaf-line,
+  #mushafPage[data-page="2"] .mushaf-line{
+    text-align:center;
+    text-align-last:center;
+  }
   .mushaf-line::-webkit-scrollbar{ display:none; }
   /* each mushaf word renders as a two-row cell: Arabic on top (reveal-cursor blur applies to
      it), its Indonesian gloss under it — always visible when the "Terjemahan per kata" toggle
