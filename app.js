@@ -666,6 +666,13 @@
       if (Reciter.rangePaused()){ Reciter.resumeRange(); rangeStatus("lanjut…"); }
       else if (Reciter.rangeActive()){ Reciter.pauseRange(); rangeStatus("jeda"); }
     });
+    document.getElementById("rangeReplay").addEventListener("click", function(){
+      // Mamah-mode: paused mid-ayah, wants to hear that ayah again from the top —
+      // re-seeks to the current ayah's start and plays (also fine mid-play)
+      if (!Reciter.rangeActive()) return;
+      Reciter.replayRangeAyah();
+      rangeStatus("mengulang ayat ini…");
+    });
     document.getElementById("rangeStop").addEventListener("click", function(){
       Reciter.stopRange();
       setPlayingAyah(null);

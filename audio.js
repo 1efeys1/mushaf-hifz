@@ -302,6 +302,7 @@
 
       // the queue exists immediately (silent-reveal guards + UI depend on rangeActive),
       // but playback waits for the timings lookup so the very first ayah can be gapless
+      queue.restep = step; // replayRangeAyah re-runs the current ayah through this
       loadTimings(surah).then(function(t){
         if (rangeQueue !== queue) return;
         queue.pending = false;
@@ -317,6 +318,16 @@
     },
     resumeRange: function(){
       if (rangeQueue && rangeQueue.paused){ rangeQueue.paused = false; el.play().catch(function(){}); }
+    },
+    // restart the range's CURRENT ayah from its top — the "ulangi ayat ini" tap. Works
+    // mid-play or while paused; resets the seamless-chain state so the engine re-seeks
+    // (a chain entry would just re-arm the watchdog where the element happens to sit).
+    replayRangeAyah: function(){
+      var q = rangeQueue;
+      if (!q || q.pending || !q.restep) return;
+      q.rolled = false;
+      q.paused = false;
+      q.restep();
     },
     stopRange: function(){
       if (!rangeQueue) return;
