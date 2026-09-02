@@ -199,7 +199,8 @@
   var RANGE_REPEAT_MAX = 10;
 
   function loadAudioPrefs(){
-    var prefs = { tapPlay: true, syncReveal: false, autoScroll: true, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
+    var prefs = { tapPlay: true, syncReveal: true, autoScroll: true, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
+    var migrated = false;
     try{
       var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
       if (raw && typeof raw === "object"){
@@ -211,8 +212,17 @@
         if (Number.isInteger(raw.to) && raw.to >= 1) prefs.to = raw.to;
         if (Number.isInteger(raw.repeat) && raw.repeat >= 1 && raw.repeat <= RANGE_REPEAT_MAX) prefs.repeat = raw.repeat;
         if (raw.speed >= 0.5 && raw.speed <= 2) prefs.speed = raw.speed;
+        // the follow-along toggles now default ON — flip stored OFFs once for prefs
+        // saved before that default existed (raw.v2Defaults absent); the flag then
+        // rides along in every save so later manual toggles keep sticking
+        if (!raw.v2Defaults){
+          prefs.tapPlay = prefs.syncReveal = prefs.autoScroll = true;
+          migrated = true;
+        }
+        prefs.v2Defaults = true;
       }
     } catch(e){ /* storage unavailable — defaults */ }
+    if (migrated){ try{ localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(prefs)); } catch(e){ /* just won't persist */ } }
     return prefs;
   }
 
