@@ -255,22 +255,32 @@
     },
     getSpeed: function(){ return speed; },
 
-    // ---- range playback: ayahs from..to of one surah, each repeated `repeat` times ----
-    // onProgress(ayah, rep) fires when an ayah repetition starts; onDone() when the whole
-    // range finishes (or is stopped). A failed ayah is skipped, but three failures in a row
-    // (offline / CDN down) abort the range via onError instead of burning through it.
-    startRange: function(surah, from, to, repeat, onProgress, onDone, onError){
+    // ---- range playback: ayahs from..to of one surah, repeated `repeat` times ----
+    // mode "ayah": each ayah repeats `repeat` times before moving on (1,1,2,2,…).
+    // mode "range": the whole from..to pass repeats (1…N,1…N,…) — `repeat` passes.
+    // onProgress(ayah, rep) fires when an ayah starts; rep = per-ayah repetition or
+    // the range pass number, per mode. onDone() when the whole range finishes (or is
+    // stopped). A failed ayah is skipped, but three failures in a row (offline / CDN
+    // down) abort the range via onError instead of burning through it.
+    startRange: function(surah, from, to, repeat, mode, onProgress, onDone, onError){
       playToken++;
-      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, ayah: from, rep: 1, paused: false, errStreak: 0, pending: true, gapless: null, rolled: false };
+      mode = mode === "range" ? "range" : "ayah";
+      rangeQueue = { surah: surah, from: from, to: to, repeat: repeat, mode: mode, pass: 1, ayah: from, rep: 1, paused: false, errStreak: 0, pending: true, gapless: null, rolled: false };
       var queue = rangeQueue;
 
       function step(){
         if (rangeQueue !== queue) return;
-        onProgress(queue.ayah, queue.rep);
+        onProgress(queue.ayah, queue.mode === "range" ? queue.pass : queue.rep);
         var vt = queue.gapless && queue.gapless.verses[queue.ayah - 1];
         function advance(){
           if (rangeQueue !== queue) return;
-          if (queue.rep < queue.repeat){ queue.rep++; }
+          if (queue.mode === "range"){
+            if (queue.ayah < queue.to){ queue.ayah++; }
+            else if (queue.pass < queue.repeat){ queue.pass++; queue.ayah = queue.from; }
+            else { rangeQueue = null; onDone(); return; }
+            queue.rep = 1;
+          }
+          else if (queue.rep < queue.repeat){ queue.rep++; }
           else if (queue.ayah < queue.to){ queue.ayah++; queue.rep = 1; }
           else { rangeQueue = null; onDone(); return; }
           step();
@@ -285,7 +295,12 @@
           // stream — chain it seamlessly (no pause/seek/play at the boundary, see
           // playGaplessAyah). queue.rolled records that the element is still rolling
           // from the previous verse's seamless finish, so the next call re-arms only.
-          var chainNext = queue.rep >= queue.repeat && queue.ayah < queue.to;
+          // Per-ayah: chain on the ayah's last repetition when a next ayah follows.
+          // Range: chain while the pass still has a next ayah; the wrap back to
+          // `from` and the final pass are not stream-contiguous — real seek there.
+          var chainNext = queue.mode === "range"
+            ? queue.ayah < queue.to
+            : (queue.rep >= queue.repeat && queue.ayah < queue.to);
           var entry = queue.rolled ? "chain" : undefined;
           playGaplessAyah(queue.surah, queue.ayah, queue.gapless,
             function(){ queue.errStreak = 0; advance(); }, onFail,
@@ -293,9 +308,11 @@
           queue.rolled = chainNext;
         } else {
           // fallback per-file path: warm the next ayah while this one plays
-          var nextIsRepeat = queue.rep < queue.repeat;
-          var nextIsAyah = queue.ayah < queue.to;
-          if (nextIsRepeat || nextIsAyah) preload(ayahAudioUrl(surah, nextIsRepeat ? queue.ayah : queue.ayah + 1));
+          var nextIsRepeat = queue.mode !== "range" && queue.rep < queue.repeat;
+          var wrap = queue.mode === "range" && queue.ayah >= queue.to && queue.pass < queue.repeat;
+          if (nextIsRepeat || queue.ayah < queue.to || wrap) {
+            preload(ayahAudioUrl(surah, nextIsRepeat ? queue.ayah : (queue.ayah < queue.to ? queue.ayah + 1 : queue.from)));
+          }
           playUrl(ayahAudioUrl(surah, queue.ayah), function(){ queue.errStreak = 0; advance(); }, onFail);
         }
       }

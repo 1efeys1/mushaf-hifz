@@ -199,7 +199,7 @@
   var RANGE_REPEAT_MAX = 10;
 
   function loadAudioPrefs(){
-    var prefs = { tapPlay: true, syncReveal: true, autoScroll: true, surah: 1, from: 1, to: 7, repeat: 1, speed: 1 };
+    var prefs = { tapPlay: true, syncReveal: true, autoScroll: true, surah: 1, from: 1, to: 7, repeat: 1, repeatMode: "ayah", speed: 1 };
     var migrated = false;
     try{
       var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
@@ -207,6 +207,7 @@
         if (typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
         if (typeof raw.syncReveal === "boolean") prefs.syncReveal = raw.syncReveal;
         if (typeof raw.autoScroll === "boolean") prefs.autoScroll = raw.autoScroll;
+        if (raw.repeatMode === "range") prefs.repeatMode = "range";
         if (Number.isInteger(raw.surah) && raw.surah >= 1 && raw.surah <= 114) prefs.surah = raw.surah;
         if (Number.isInteger(raw.from) && raw.from >= 1) prefs.from = raw.from;
         if (Number.isInteger(raw.to) && raw.to >= 1) prefs.to = raw.to;
@@ -553,6 +554,7 @@
     var fromInput = document.getElementById("rangeFrom");
     var toInput = document.getElementById("rangeTo");
     var repeatSel = document.getElementById("rangeRepeat");
+    var repeatModeSel = document.getElementById("rangeRepeatMode");
     var speedSel = document.getElementById("rangeSpeed");
 
     SURAH_META.forEach(function(s){
@@ -564,6 +566,8 @@
     for (var r = 1; r <= RANGE_REPEAT_MAX; r++){
       repeatSel.appendChild(new Option(String(r), String(r)));
     }
+    repeatModeSel.appendChild(new Option("per ayat", "ayah"));
+    repeatModeSel.appendChild(new Option("rentang", "range"));
     [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].forEach(function(sp){
       speedSel.appendChild(new Option(String(sp) + "×", String(sp)));
     });
@@ -604,6 +608,10 @@
       audioPrefs.repeat = parseInt(repeatSel.value, 10) || 1;
       saveAudioPrefs();
     });
+    repeatModeSel.addEventListener("change", function(){
+      audioPrefs.repeatMode = repeatModeSel.value === "range" ? "range" : "ayah";
+      saveAudioPrefs();
+    });
     speedSel.addEventListener("change", function(){
       audioPrefs.speed = parseFloat(speedSel.value) || 1;
       Reciter.setSpeed(audioPrefs.speed);
@@ -613,6 +621,7 @@
     refreshRangeControls = function(){
       surahSel.value = String(audioPrefs.surah);
       repeatSel.value = String(audioPrefs.repeat);
+      repeatModeSel.value = audioPrefs.repeatMode;
       speedSel.value = String(audioPrefs.speed);
       clampRange();
     };
@@ -632,11 +641,11 @@
       // otherwise re-sync audioPrefs to the reading position AFTER the user set them but
       // BEFORE start() consumes them — the range used to silently become something else
       // (set 6-11, heard 8-14)
-      var surah = audioPrefs.surah, from = audioPrefs.from, to = audioPrefs.to, repeat = audioPrefs.repeat;
+      var surah = audioPrefs.surah, from = audioPrefs.from, to = audioPrefs.to, repeat = audioPrefs.repeat, mode = audioPrefs.repeatMode;
       rangeStartPending = true;
       function start(){
         rangeStartPending = false;
-        Reciter.startRange(surah, from, to, repeat,
+        Reciter.startRange(surah, from, to, repeat, mode,
           function(ayah, rep){
             setPlayingAyah([surah, ayah]);
             if (audioPrefs.autoScroll){
@@ -646,7 +655,7 @@
               if (page && page !== currentPage) goToPage(page);
               else scrollPlayingAyahIntoView();
             }
-            rangeStatus(surah + ":" + ayah + " · ulangan " + rep + "/" + repeat);
+            rangeStatus(surah + ":" + ayah + (mode === "range" ? " · putaran " : " · ulangan ") + rep + "/" + repeat);
           },
           function(){
             setPlayingAyah(null);
