@@ -4,7 +4,7 @@ Alat bantu hafalan Qur'an berbasis web — layout 16-baris ala Mushaf Madinah,
 tampilan per-kata yang bisa disembunyikan/ditampilkan (reveal cursor) buat
 latihan hafalan, dan bookmark per-ayat per-device.
 
-**Live**: https://1efeys1.github.io/mushaf-hifz/?d=20260903
+**Live**: https://1efeys1.github.io/mushaf-hifz/?w=1.1
 
 ## Jalanin di lokal
 
