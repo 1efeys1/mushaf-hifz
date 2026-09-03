@@ -599,10 +599,10 @@
     box-shadow:
       0 0 0 1px #0000001a,
       0 24px 60px -20px #000000aa,
-      inset 0 0 0 8px var(--paper),
-      inset 0 0 0 9px var(--gold-soft),
-      inset 0 0 0 13px var(--paper);
-    padding:46px 10px;
+      inset 0 0 0 2px var(--paper),
+      inset 0 0 0 3px var(--gold-soft),
+      inset 0 0 0 4px var(--paper);
+    padding:46px 4px;
     overflow:hidden;
     transform-origin:top left;
     will-change:transform;
@@ -740,7 +740,6 @@
     opacity:.5;
     transition:filter .22s ease, opacity .22s ease, background .2s ease;
     border-radius:5px;
-    padding:1px 3px;
     display:inline-block;
     -webkit-touch-callout:none;
     -webkit-user-select:none;
@@ -1057,7 +1056,7 @@
       background:rgba(0,0,0,.55);
       z-index:16;
     }
-    .mushaf-page{ padding:22px 14px 30px; }
+    .mushaf-page{ padding:22px 4px 30px; }
 
     /* ---- compact single-row header: [☰ surahStatus page-jump ⚙] — the decorative brand
        wordmark gives way to the current surah name on narrow screens ---- */

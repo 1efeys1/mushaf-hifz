@@ -57,7 +57,7 @@
   var VIEW_MODE_KEY = "mushafHifzViewMode";
   var AYAH_FONT_SCALE_KEY = "mushafHifzAyahFontScale";
   var TRANSLATION_FONT_SCALE_KEY = "mushafHifzTranslationFontScale";
-  var AYAH_FONT_SCALE_MIN = 0.7, AYAH_FONT_SCALE_MAX = 1.8, AYAH_FONT_SCALE_STEP = 0.1;
+  var AYAH_FONT_SCALE_MIN = 0.5, AYAH_FONT_SCALE_MAX = 2.5, AYAH_FONT_SCALE_STEP = 0.01;
 
   function loadViewMode(){
     try{
