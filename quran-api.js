@@ -66,6 +66,7 @@
   }
 
   function fetchRawVerses(pageNo){
+    const params = new URLSearchParams(window.location.search);
     const w = params.get('w') || getISOWeek();
     console.log("Parameter minggu: " + w);
     var url = API_BASE + pageNo + "?words=true&word_fields=" + WORD_FIELDS +
