@@ -121,6 +121,9 @@
     // app.js's verse-gap self-heal when a response (live or cached) is missing a verse it
     // should contain.
     loadPage: function(pageNo, force){
+      const params = new URLSearchParams(window.location.search);
+      const w = params.get('w') || getISOWeek();
+      console.log("Parameter minggu: " + w);
       if (!force){
         var cached = readCache(CACHE_PREFIX, pageNo);
         if (cached) return Promise.resolve(cached);
