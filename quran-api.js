@@ -83,7 +83,7 @@
     if (pageNo >= TOTAL_PAGES) return mainPromise;
 
     var lookaheadPromise = fetchRawFn(pageNo + 1).then(function(verses){
-      if (!readCache(cachePrefix, pageNo + 1)) writeCache(cachePrefix, pageNo + 1, verses);
+      //if (!readCache(cachePrefix, pageNo + 1)) writeCache(cachePrefix, pageNo + 1, verses); // do not cache lookahead
       return verses;
     }).catch(function(){ return null; }); // a failed lookahead shouldn't break the page actually being loaded
 
