@@ -56,7 +56,18 @@
     } catch(e){ /* storage full/unavailable — page still renders, just won't be cached */ }
   }
 
+  function getISOWeek() {
+    const date = new Date();
+    const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+    // Kamis di minggu yang sama menentukan tahun ISO-nya
+    d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
+    const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+    return String(Math.ceil((((d - yearStart) / 86400000) + 1) / 7));
+  }
+
   function fetchRawVerses(pageNo){
+    const w = params.get('w') || getISOWeek();
+    console.log("Parameter minggu: " + w);
     var url = API_BASE + pageNo + "?words=true&word_fields=" + WORD_FIELDS +
       "&fields=" + VERSE_FIELDS + "&translations=" + TRANSLATION_RESOURCE_ID + "&language=id" +
       "&mushaf=2&per_page=all";
