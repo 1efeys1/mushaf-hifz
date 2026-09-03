@@ -123,13 +123,14 @@
     loadPage: function(pageNo, force){
       const params = new URLSearchParams(window.location.search);
       const w = params.get('w') || getISOWeek();
-      console.log("Parameter minggu: " + w);
+      //console.log("Parameter minggu: " + w);
+      const prefix = CACHE_PREFIX + w + ":";
       if (!force){
-        var cached = readCache(CACHE_PREFIX, pageNo);
+        var cached = readCache(prefix, pageNo);
         if (cached) return Promise.resolve(cached);
       }
-      return fetchPageWithLookahead(pageNo, fetchRawVerses, CACHE_PREFIX).then(function(verses){
-        writeCache(CACHE_PREFIX, pageNo, verses);
+      return fetchPageWithLookahead(pageNo, fetchRawVerses, prefix).then(function(verses){
+        writeCache(prefix, pageNo, verses);
         return verses;
       });
     }
