@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- matches header.topbar's dark green so the edge-to-edge inset strips blend in -->
+    <color name="mushafBarGreen">#122A1D</color>
+</resources>

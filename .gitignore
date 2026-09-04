@@ -2,3 +2,16 @@
 # not pushed to the public GitHub Pages repo.
 NOTES.md
 mushaf-hifz(4).html
+
+# Capacitor / Android build artifacts
+node_modules/
+www/
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/
+
+# local agent/test artifacts
+.playwright-mcp/
+.zcode/

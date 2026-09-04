@@ -3,6 +3,14 @@
   "private": true,
   "scripts": {
     "dev": "bun run build/serve.js",
-    "start": "bun run build/serve.js"
+    "start": "bun run build/serve.js",
+    "apk": "node build/make-www.js && cap sync android && cd android && gradlew.bat assembleDebug"
+  },
+  "dependencies": {
+    "@capacitor/core": "7"
+  },
+  "devDependencies": {
+    "@capacitor/android": "7",
+    "@capacitor/cli": "7"
   }
 }

@@ -1,0 +1,11 @@
+{
+  "appId": "com.mushafhifz.app",
+  "appName": "Mushaf Hifz",
+  "webDir": "www",
+  "server": {
+    "url": "https://1efeys1.github.io/mushaf-hifz/"
+  },
+  "android": {
+    "adjustMarginsForEdgeToEdge": "force"
+  }
+}
