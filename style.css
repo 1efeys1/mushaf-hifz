@@ -1307,8 +1307,11 @@
     .edge-fabs{
       display:flex;
       position:fixed;
-      left:8px; top:8px;
-      gap:8px;
+      /* top-right corner, inside the 96px right band main.reader already keeps clear
+         (the reveal rail is vertically centered, so the corner itself is free); the
+         42+4+42+8px row lands exactly on the band's edge without touching the page */
+      right:8px; top:8px;
+      gap:4px;
       z-index:15;
     }
     .edge-fab{
