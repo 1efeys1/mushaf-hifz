@@ -1160,9 +1160,22 @@
     refreshAyahJumpTarget(); // empty-search target follows the open page
   }
 
-  // ---------------- sidebar tabs (Surah / Markah) ----------------
+  // ---------------- sidebar tabs (Surah / Markah) + Markah sub-tabs (Markah / Catatan) ----------------
   document.getElementById("tabSurah").addEventListener("click", function(){ switchSidebarTab("surah"); });
   document.getElementById("tabBookmarks").addEventListener("click", function(){ switchSidebarTab("bookmarks"); });
+  document.getElementById("subtabBookmarks").addEventListener("click", function(){ switchMarkahSubTab("bookmarks"); });
+  document.getElementById("subtabNotes").addEventListener("click", function(){ switchMarkahSubTab("notes"); });
+
+  var markahSubTab = "bookmarks";
+
+  function switchMarkahSubTab(sub){
+    markahSubTab = sub;
+    var isBm = sub === "bookmarks";
+    document.getElementById("subtabBookmarks").classList.toggle("active", isBm);
+    document.getElementById("subtabNotes").classList.toggle("active", !isBm);
+    document.getElementById("bookmarkList").style.display = isBm ? "block" : "none";
+    document.getElementById("noteList").style.display = isBm ? "none" : "block";
+  }
 
   function switchSidebarTab(tab){
     var isSurah = tab === "surah";
@@ -1172,7 +1185,8 @@
     document.getElementById("ayahJumpRow").style.display =
       isSurah && ayahJumpAvailable ? "" : "none";
     document.getElementById("surahList").style.display = isSurah ? "" : "none";
-    document.getElementById("bookmarkList").style.display = isSurah ? "none" : "block";
+    document.getElementById("markahPanel").style.display = isSurah ? "none" : "flex";
+    if (!isSurah) switchMarkahSubTab(markahSubTab); // re-apply the remembered sub-tab
   }
 
   // ---------------- bookmarks — per-ayah, saved to this device/browser only, via localStorage ----------------
@@ -1267,6 +1281,49 @@
     });
   }
 
+  // the "Catatan" sub-tab of the Markah panel — every saved note, newest-reading-order
+  // (surah then ayah), jumping straight to its ayah like a bookmark row does
+  function renderNoteList(){
+    var keys = Object.keys(notes).sort(function(x, y){
+      var a = x.split(":"), b = y.split(":");
+      return (+a[0] - +b[0]) || (+a[1] - +b[1]);
+    });
+    var countEl = document.getElementById("noteCount");
+    if (countEl) countEl.textContent = keys.length || "";
+    var container = document.getElementById("noteList");
+    if (!container) return;
+    if (!keys.length){
+      container.innerHTML = '<div class="bookmark-empty">Belum ada catatan.<br>Tahan sebuah kata/ayat, lalu pilih 📝 Catatan.</div>';
+      return;
+    }
+    container.innerHTML = "";
+    keys.forEach(function(key){
+      var parts = key.split(":");
+      var surah = +parts[0], ayah = +parts[1];
+      var page = AYAH_PAGE[surah - 1][ayah - 1];
+      var item = document.createElement("div");
+      item.className = "bookmark-item note-item";
+      item.innerHTML =
+        '<div class="bm-ayah">' + ayah + '</div>' +
+        '<div class="bm-info">' +
+          '<div class="bm-surah">' + SURAH_META[surah - 1][1] + '</div>' +
+          '<div class="note-preview">' + escapeHtml(notes[key]) + '</div>' +
+          '<div class="bm-meta">Ayat ' + ayah + ' · Halaman ' + page + '</div>' +
+        '</div>' +
+        '<button class="bm-remove" type="button" title="Hapus catatan">✕</button>';
+      item.addEventListener("click", function(e){
+        if (e.target.closest(".bm-remove")) return;
+        goToAyah(surah, ayah, page);
+      });
+      item.querySelector(".bm-remove").addEventListener("click", function(e){
+        e.stopPropagation();
+        setNote(surah, ayah, null); // re-renders this list
+        renderPage(currentPage, true); // drop the inline note if that ayah is on the open page
+      });
+      container.appendChild(item);
+    });
+  }
+
   // ---------------- per-ayah annotations: stabilo highlights + notes (localStorage only) ----------------
   // Keyed "surah:ayah" → { ar: 1..4, tr: 1..4 } for highlights (color class indexes into
   // .hl-1..hl-4 in style.css; missing/null = no stabilo on that side), plain string for notes.
@@ -1334,6 +1391,7 @@
     if (t) notes[key] = t;
     else delete notes[key];
     saveNotes();
+    renderNoteList(); // keep the sidebar Catatan sub-tab in sync from every mutation path
   }
 
   // ---------------- long-press a word/translation → ayah actions: markah, stabilo, catatan ----------------
@@ -2187,6 +2245,7 @@
   function boot(){
     renderSidebar();
     renderBookmarkList();
+    renderNoteList();
     buildReaderShell();
     wireSettingsPanel();
     wireAudioBar();

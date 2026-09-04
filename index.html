@@ -41,7 +41,7 @@
     <div class="sidebar-head">
       <div class="sidebar-tabs">
         <button class="sidebar-tab active" id="tabSurah" type="button">Surah</button>
-        <button class="sidebar-tab" id="tabBookmarks" type="button">Markah <span class="tab-count" id="bookmarkCount"></span></button>
+        <button class="sidebar-tab" id="tabBookmarks" type="button">Markah</button>
       </div>
       <input type="text" id="surahSearch" placeholder="Cari surah… (nama, nomor)">
       <div class="ayah-jump" id="ayahJumpRow">
@@ -52,7 +52,14 @@
       </div>
     </div>
     <div class="surah-list" id="surahList"></div>
-    <div class="bookmark-list" id="bookmarkList"></div>
+    <div class="markah-panel" id="markahPanel">
+      <div class="markah-subtabs">
+        <button class="markah-subtab active" id="subtabBookmarks" type="button">Markah <span class="tab-count" id="bookmarkCount"></span></button>
+        <button class="markah-subtab" id="subtabNotes" type="button">Catatan <span class="tab-count" id="noteCount"></span></button>
+      </div>
+      <div class="bookmark-list" id="bookmarkList"></div>
+      <div class="note-list" id="noteList"></div>
+    </div>
   </aside>
 
   <main class="reader" id="reader">

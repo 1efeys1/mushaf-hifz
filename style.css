@@ -237,6 +237,50 @@
     padding:6px 0;
     display:none;
   }
+  /* Markah panel: sub-tabs (Markah / Catatan) over the two scrollable lists */
+  .markah-panel{
+    flex:1;
+    overflow:hidden;
+    display:none;
+    flex-direction:column;
+  }
+  .markah-subtabs{
+    display:flex;
+    gap:6px;
+    padding:6px 12px 2px;
+  }
+  .markah-subtab{
+    flex:1;
+    background:transparent;
+    border:1px solid #345342;
+    color:#9fae97;
+    padding:6px 8px;
+    border-radius:8px;
+    font-size:12px;
+    font-family:'Work Sans',sans-serif;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:5px;
+  }
+  .markah-subtab:hover{ background:#16301f; }
+  .markah-subtab.active{ background:#1b3a25; border-color:var(--gold-soft); color:#F1E9C8; }
+  .note-list{
+    flex:1;
+    overflow-y:auto;
+    padding:6px 0;
+    display:none;
+  }
+  .note-item{ align-items:flex-start; }
+  .note-preview{
+    font-size:11.5px;
+    color:#cfd8c6;
+    margin-top:2px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
   .bookmark-empty{
     padding:22px 16px;
     text-align:center;
