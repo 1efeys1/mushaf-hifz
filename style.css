@@ -843,6 +843,33 @@
   .hl-2{ background:#8FD98F59; border-radius:4px; } /* hijau */
   .hl-3{ background:#7EC8F259; border-radius:4px; } /* biru */
   .hl-4{ background:#F5A8D059; border-radius:4px; } /* pink */
+
+  /* drag-selection: reserve horizontal drags for the word-range stabilo gesture while
+     vertical panning keeps scrolling the page (checked at gesture start, so this must
+     live on the elements themselves, not toggled mid-gesture) */
+  .word, .wgloss, .ayah-word{ touch-action:pan-y; }
+  .word.wsel, .wgloss.wsel, .ayah-word.wsel{ background:#C9A64B73; border-radius:4px; }
+
+  /* word-range highlight popup (after a drag-select) — same chrome as .ayah-popup */
+  .word-hl-popup{
+    position:fixed;
+    z-index:50;
+    display:none;
+    background:#173626;
+    border:1px solid var(--gold-soft);
+    border-radius:10px;
+    box-shadow:0 10px 30px -8px #000000cc;
+    padding:8px 10px 6px;
+  }
+  .word-hl-popup.open{ display:block; }
+  .whl-title{
+    font-size:11.5px;
+    color:#cfd8c6;
+    font-family:'Work Sans',sans-serif;
+    margin-bottom:6px;
+    text-align:center;
+    white-space:nowrap;
+  }
   .ayah-words.hl-1, .ayah-words.hl-2, .ayah-words.hl-3, .ayah-words.hl-4,
   .ayah-translation.hl-1, .ayah-translation.hl-2, .ayah-translation.hl-3, .ayah-translation.hl-4{
     border-radius:8px;
