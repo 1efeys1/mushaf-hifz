@@ -1333,22 +1333,28 @@
     /* phone landscape is swipe territory too — page-nav stays hidden */
     #prevPage, #nextPage{ display:none; }
 
-    /* the audio bar is a compact bottom pill here (the reveal footer is a centered right
-       column, and a full-width bottom bar would eat the little height this orientation has),
-       horizontally centered; its panel expands upward from the pill, also centered */
+    /* the audio bar is a compact bottom-right block here, flush to the edge like the
+       reveal rail above it and inside the same 96px band main.reader already keeps
+       clear of content — the reciter label wraps onto two lines to fit (user-ok'd) */
     .audio-bar{
-      left:50%; right:auto; bottom:8px;
-      transform:translateX(-50%);
-      width:auto;
+      left:auto; right:0; bottom:8px;
+      transform:none;
+      width:96px;
       border:1px solid #0a1610;
-      border-radius:10px;
+      border-radius:10px 0 0 10px;
     }
-    .audio-bar-head{ padding:6px 12px; font-size:11.5px; }
+    .audio-bar-head{
+      padding:6px 6px;
+      font-size:11px;
+      line-height:1.3;
+      flex-wrap:wrap;
+      gap:2px 4px;
+    }
     .audio-panel{
       position:absolute;
       bottom:100%;
-      left:50%;
-      transform:translateX(-50%);
+      left:auto; right:0;
+      transform:none;
       width:min(320px, calc(100vw - 16px));
       margin-bottom:8px;
       border:1px solid #0a1610;
