@@ -313,6 +313,12 @@
     overflow:hidden;
     text-overflow:ellipsis;
   }
+  .bm-surah .bm-lat{
+    font-family:'Work Sans',sans-serif;
+    font-size:11px;
+    color:#9fae97;
+    margin-left:4px;
+  }
   .bm-meta{
     font-size:11px;
     color:#9fae97;

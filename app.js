@@ -1277,7 +1277,7 @@
       item.innerHTML =
         '<div class="bm-ayah">' + bm.ayah + '</div>' +
         '<div class="bm-info">' +
-          '<div class="bm-surah">' + surahName + '</div>' +
+          '<div class="bm-surah">' + surahName + ' <span class="bm-lat">' + SURAH_META[bm.surah - 1][2] + '</span></div>' +
           '<div class="bm-meta">Ayat ' + bm.ayah + ' · Halaman ' + bm.page + '</div>' +
         '</div>' +
         '<button class="bm-remove" type="button" title="Hapus markah">✕</button>';
@@ -1318,7 +1318,7 @@
       item.innerHTML =
         '<div class="bm-ayah">' + ayah + '</div>' +
         '<div class="bm-info">' +
-          '<div class="bm-surah">' + SURAH_META[surah - 1][1] + '</div>' +
+          '<div class="bm-surah">' + SURAH_META[surah - 1][1] + ' <span class="bm-lat">' + SURAH_META[surah - 1][2] + '</span></div>' +
           '<div class="note-preview">' + escapeHtml(notes[key]) + '</div>' +
           '<div class="bm-meta">Ayat ' + ayah + ' · Halaman ' + page + '</div>' +
         '</div>' +
