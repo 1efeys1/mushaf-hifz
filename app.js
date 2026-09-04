@@ -1601,7 +1601,7 @@
         var ayahPair = fixedAyahPair || (idxEl && getPageWordAyahList(currentPage)[+idxEl.dataset.idx]);
         if (!ayahPair) return;
         var wordEl = el.classList.contains("word") ? el : el.querySelector(".word");
-        if (wordEl) beginWordSelection(wordEl, ayahPair);
+        if (wordEl) beginWordSelection(wordEl, ayahPair, startX, startY);
         else showAyahPopup(startX, startY, ayahPair[0], ayahPair[1]); // e.g. translation block — nothing to drag
       }, LONG_PRESS_MS);
     });
@@ -1666,41 +1666,73 @@
     });
   }
 
-  function beginWordSelection(wordEl, ayahPair){
+  function beginWordSelection(wordEl, ayahPair, startX, startY){
     wordSel = {
       s: ayahPair[0], a: ayahPair[1],
       originIdx: +wordEl.dataset.idx, originW: +wordEl.dataset.w,
-      curIdx: +wordEl.dataset.idx, curW: +wordEl.dataset.w
+      curIdx: +wordEl.dataset.idx, curW: +wordEl.dataset.w,
+      lastX: startX, lastY: startY, anchorX: startX
     };
     tintWordSelection();
     document.addEventListener("pointermove", wordSelMove);
     document.addEventListener("pointerup", wordSelEnd);
-    document.addEventListener("pointercancel", wordSelAbort);
+    document.addEventListener("pointercancel", wordSelCancel);
   }
 
   function detachWordSel(){
     document.removeEventListener("pointermove", wordSelMove);
     document.removeEventListener("pointerup", wordSelEnd);
-    document.removeEventListener("pointercancel", wordSelAbort);
+    document.removeEventListener("pointercancel", wordSelCancel);
   }
 
   function wordSelMove(e){
     if (!wordSel) return;
+    wordSel.lastX = e.clientX;
+    wordSel.lastY = e.clientY;
     var w = wordElAtPoint(e.clientX, e.clientY);
-    if (!w) return;
-    var pair = wordSelAyahOf(w);
-    if (!pair || pair[0] !== wordSel.s || pair[1] !== wordSel.a) return; // stays inside one ayah
-    if (+w.dataset.idx === wordSel.curIdx) return;
-    wordSel.curIdx = +w.dataset.idx;
-    wordSel.curW = +w.dataset.w;
+    if (w){
+      var pair = wordSelAyahOf(w);
+      if (pair && pair[0] === wordSel.s && pair[1] === wordSel.a){
+        if (+w.dataset.idx !== wordSel.curIdx){
+          wordSel.curIdx = +w.dataset.idx;
+          wordSel.curW = +w.dataset.w;
+          tintWordSelection();
+        }
+        wordSel.anchorX = e.clientX;
+        return;
+      }
+    }
+    // the finger left the selectable words — past the line's last word, in a line gap,
+    // over a margin. Keep the selection moving by drag DIRECTION instead of position:
+    // leftward eats words in reading order (which is what crosses line breaks — the
+    // continuation sits on the next line DOWN, and a vertical drag would just scroll),
+    // rightward gives words back. One word per next-cell-width of travel.
+    var dx = e.clientX - wordSel.anchorX;
+    if (!dx) return;
+    var target = wordSel.curIdx + (dx < 0 ? 1 : -1);
+    var cell = document.querySelector('.word[data-idx="' + target + '"]');
+    if (!cell) return;
+    var pair = wordSelAyahOf(cell);
+    if (!pair || pair[0] !== wordSel.s || pair[1] !== wordSel.a) return; // ayah boundary
+    var need = Math.max(12, cell.getBoundingClientRect().width);
+    if (Math.abs(dx) < need) return;
+    wordSel.curIdx = target;
+    wordSel.curW = +cell.dataset.w;
+    wordSel.anchorX = e.clientX; // consumed by this word
     tintWordSelection();
   }
 
-  function wordSelAbort(){
+  // a vertical drag scrolls (touch-action:pan-y) and the browser reclaims the pointer —
+  // land the selection softly at what was already picked instead of throwing it away
+  function wordSelCancel(){
     if (!wordSel) return;
+    var sel = wordSel;
     wordSel = null;
     detachWordSel();
     tintWordSelection();
+    if (sel.curIdx !== sel.originIdx){
+      showWordHlPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
+    }
   }
 
   function wordSelEnd(e){
