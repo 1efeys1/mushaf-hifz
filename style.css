@@ -1353,9 +1353,11 @@
     .audio-panel{
       position:absolute;
       bottom:100%;
-      left:auto; right:0;
+      /* shifted fully clear of the right-side chrome (reveal rail + edge fabs live in
+         the 96px edge band) — it floats up over the reading area instead, edge + 8px gap */
+      left:auto; right:104px;
       transform:none;
-      width:min(320px, calc(100vw - 16px));
+      width:min(320px, calc(100vw - 120px));
       margin-bottom:8px;
       border:1px solid #0a1610;
       border-radius:10px;
