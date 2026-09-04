@@ -311,7 +311,7 @@
     container.querySelectorAll(".hl-1, .hl-2, .hl-3, .hl-4").forEach(function(el){
       el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
     });
-    container.querySelectorAll(".num.has-note").forEach(function(el){ el.classList.remove("has-note"); });
+    container.querySelectorAll(".note-marker").forEach(function(el){ el.remove(); });
     var seen = {};
     Object.keys(highlights).concat(Object.keys(notes)).forEach(function(key){
       if (seen[key]) return;
@@ -348,8 +348,20 @@
         if (h.tr && el.classList.contains("wgloss")) el.classList.add("hl-" + h.tr);
       });
       if (notes[key]){
+        // a real element, not a ::after, so tapping it opens the note directly — no
+        // long-press needed (the badge itself still reveals/plays on tap)
         var num = container.querySelector('.num[data-idx="' + hi + '"]');
-        if (num) num.classList.add("has-note");
+        if (num){
+          var marker = document.createElement("span");
+          marker.className = "note-marker";
+          marker.textContent = "📝";
+          marker.title = "Lihat catatan";
+          marker.addEventListener("click", function(e){
+            e.stopPropagation();
+            showNoteSheet(surah, ayah);
+          });
+          num.appendChild(marker);
+        }
       }
     });
   }
@@ -2032,6 +2044,10 @@
       // long-press target too (tapping it does nothing, unlike words)
       block.querySelectorAll(".ayah-translation").forEach(function(trEl){
         wireLongPressAyahActions(trEl, ayahPair);
+      });
+      // visible note boxes open straight into the editor on tap
+      block.querySelectorAll(".ayah-note").forEach(function(noteEl){
+        noteEl.addEventListener("click", function(){ showNoteSheet(ayahPair[0], ayahPair[1]); });
       });
     });
 

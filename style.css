@@ -841,16 +841,20 @@
   .ayah-translation.hl-1, .ayah-translation.hl-2, .ayah-translation.hl-3, .ayah-translation.hl-4{
     border-radius:8px;
   }
-  /* a note exists for this ayah — small pencil on the ayah badge (mushaf view; the
-     ayah view shows the note text itself, see .ayah-note) */
-  .num.has-note::after{
-    content:"📝";
+  /* a note exists for this ayah — tappable 📝 pinned to the ayah badge (mushaf view; the
+     ayah view shows the note text itself — both open the editor on tap) */
+  .num .note-marker{
     position:absolute;
     top:-0.65em;
     left:-0.55em;
     font-size:.55em;
     line-height:1;
+    cursor:pointer;
+    /* invisible padding widens the hit target without growing the visual icon */
+    padding:5px;
+    margin:-5px;
   }
+  .ayah-note{ cursor:pointer; }
 
   /* ---------- tajweed coloring ----------
      Spans are always in the DOM (parsed from the API's inline rule tags — see app.js); whether
