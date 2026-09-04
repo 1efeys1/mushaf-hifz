@@ -774,6 +774,29 @@
   .word.flash, .num.flash, .sajda-tag.flash{ background:#C9A64B66; }
   .ayah-block.flash{ background:#C9A64B40; border-radius:8px; }
 
+  /* ---------- user stabilo (app.js applyAyahDecorations) ----------
+     Translucent highlighter tones over the cream paper so tajweed colors and the
+     blur of unrevealed words stay readable underneath — same idea as .playing.
+     Applied per-span in mushaf view, whole-element in ayah view. */
+  .hl-1{ background:#F7D64A59; border-radius:4px; } /* kuning */
+  .hl-2{ background:#8FD98F59; border-radius:4px; } /* hijau */
+  .hl-3{ background:#7EC8F259; border-radius:4px; } /* biru */
+  .hl-4{ background:#F5A8D059; border-radius:4px; } /* pink */
+  .ayah-words.hl-1, .ayah-words.hl-2, .ayah-words.hl-3, .ayah-words.hl-4,
+  .ayah-translation.hl-1, .ayah-translation.hl-2, .ayah-translation.hl-3, .ayah-translation.hl-4{
+    border-radius:8px;
+  }
+  /* a note exists for this ayah — small pencil on the ayah badge (mushaf view; the
+     ayah view shows the note text itself, see .ayah-note) */
+  .num.has-note::after{
+    content:"📝";
+    position:absolute;
+    top:-0.65em;
+    left:-0.55em;
+    font-size:.55em;
+    line-height:1;
+  }
+
   /* ---------- tajweed coloring ----------
      Spans are always in the DOM (parsed from the API's inline rule tags — see app.js); whether
      they take color at all is one body class, so the toggle is instant and never re-renders.
@@ -902,6 +925,22 @@
     color:var(--ink-soft);
     margin-top:10px;
   }
+  /* reader's own note for the ayah (long-press → 📝) — styled as a marginal note, kept
+     in the translation's font scale so it grows with the reader's preference */
+  .ayah-note{
+    direction:ltr;
+    font-family:'Work Sans',sans-serif;
+    font-size:calc(13px * var(--translation-font-scale, 1));
+    line-height:1.5;
+    color:var(--ink);
+    background:#C9A64B1F;
+    border-left:3px solid var(--gold-soft);
+    border-radius:6px;
+    padding:8px 12px;
+    margin-top:8px;
+    white-space:pre-wrap;
+    overflow-wrap:break-word;
+  }
 
   .page-number{
     text-align:center;
@@ -998,8 +1037,8 @@
     color:var(--ink-soft);
   }
 
-  /* ---------- long-press bookmark popup ---------- */
-  .bookmark-popup{
+  /* ---------- long-press ayah actions popup (markah / stabilo / catatan) ---------- */
+  .ayah-popup{
     position:fixed;
     z-index:50;
     display:none;
@@ -1008,20 +1047,119 @@
     border-radius:10px;
     box-shadow:0 10px 30px -8px #000000cc;
     padding:4px;
+    min-width:216px;
   }
-  .bookmark-popup.open{ display:block; }
-  .bookmark-popup button{
+  .ayah-popup.open{ display:block; }
+  .ayah-popup .ap-wide{
+    display:block;
+    width:100%;
     background:transparent;
     border:none;
     color:#EFE6C9;
-    padding:9px 14px;
+    padding:9px 12px;
     font-size:13px;
     font-family:'Work Sans',sans-serif;
     white-space:nowrap;
+    text-align:left;
     cursor:pointer;
     border-radius:7px;
   }
-  .bookmark-popup button:hover{ background:#24463482; }
+  .ayah-popup .ap-wide:hover{ background:#24463482; }
+  .ayah-popup .ap-hl-row{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    padding:6px 12px;
+  }
+  .ayah-popup .ap-hl-label{
+    font-size:12px;
+    color:#cfd8c6;
+    font-family:'Work Sans',sans-serif;
+    width:34px;
+  }
+  .ayah-popup .ap-swatches{ display:flex; align-items:center; gap:7px; }
+  .ayah-popup .ap-swatch{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:2px solid transparent;
+    padding:0;
+    cursor:pointer;
+  }
+  .ayah-popup .ap-swatch.on{ border-color:#fff; }
+  .ayah-popup .ap-off{
+    width:20px;
+    height:20px;
+    border-radius:50%;
+    border:none;
+    background:#ffffff2e;
+    color:#cfd8c6;
+    font-size:11px;
+    line-height:1;
+    padding:0;
+    cursor:pointer;
+  }
+  .ayah-popup .ap-off.on{ background:#fff; color:#173626; }
+
+  /* ---------- note editor sheet ---------- */
+  .note-sheet{
+    position:fixed;
+    inset:0;
+    z-index:60;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    background:#00000073;
+    padding:20px;
+  }
+  .note-sheet.open{ display:flex; }
+  .note-card{
+    width:min(420px, 100%);
+    background:#173626;
+    border:1px solid var(--gold-soft);
+    border-radius:12px;
+    box-shadow:0 10px 30px -8px #000000cc;
+    padding:16px;
+  }
+  .note-title{
+    font-family:'Work Sans',sans-serif;
+    font-size:14px;
+    color:var(--gold-soft);
+    margin-bottom:10px;
+  }
+  .note-input{
+    display:block;
+    width:100%;
+    box-sizing:border-box;
+    background:#0f291d;
+    border:1px solid #2c5439;
+    border-radius:8px;
+    color:#EFE6C9;
+    font-family:'Work Sans',sans-serif;
+    font-size:14px;
+    line-height:1.45;
+    padding:10px 12px;
+    resize:vertical;
+  }
+  .note-input:focus{ outline:none; border-color:var(--gold-soft); }
+  .note-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:8px;
+    margin-top:12px;
+  }
+  .note-actions button{
+    font-family:'Work Sans',sans-serif;
+    font-size:13px;
+    padding:8px 14px;
+    border-radius:7px;
+    border:1px solid #2c5439;
+    background:transparent;
+    color:#cfd8c6;
+    cursor:pointer;
+  }
+  .note-actions .note-save{ background:var(--gold-soft); border-color:var(--gold-soft); color:#173626; font-weight:600; }
+  .note-actions .note-delete{ margin-right:auto; }
 
   /* ---------- Loading / error ---------- */
   .center-screen{

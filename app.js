@@ -299,11 +299,67 @@
     });
   }
 
+  // user stabilo/note markers survive re-renders the same way the playing highlight does:
+  // stripped and re-applied wholesale after every render (and after each popup change).
+  // Ayah mode paints whole elements (.ayah-words / .ayah-translation); mushaf mode has no
+  // per-ayah wrapper, so it resolves the ayah's word range — same trick as above. Notes in
+  // ayah mode are baked into the render itself (see renderAyahPageContent); mushaf mode
+  // only gets a small marker on the ayah's .num badge.
+  function applyAyahDecorations(){
+    var container = document.getElementById("mushafPage");
+    if (!container) return;
+    container.querySelectorAll(".hl-1, .hl-2, .hl-3, .hl-4").forEach(function(el){
+      el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
+    });
+    container.querySelectorAll(".num.has-note").forEach(function(el){ el.classList.remove("has-note"); });
+    var seen = {};
+    Object.keys(highlights).concat(Object.keys(notes)).forEach(function(key){
+      if (seen[key]) return;
+      seen[key] = true;
+      var parts = key.split(":");
+      var surah = +parts[0], ayah = +parts[1];
+      var h = highlights[key] || {};
+      var block = container.querySelector('.ayah-block[data-surah="' + surah + '"][data-ayah="' + ayah + '"]');
+      if (block){ // ayah view
+        if (h.ar){
+          var words = block.querySelector(".ayah-words");
+          if (words) words.classList.add("hl-" + h.ar);
+        }
+        if (h.tr){
+          var tr = block.querySelector(".ayah-translation");
+          if (tr) tr.classList.add("hl-" + h.tr);
+        }
+        return; // note text is rendered inline — no badge marker needed
+      }
+      var list = getPageWordAyahList(currentPage); // mushaf view
+      var lo = -1, hi = -1;
+      for (var i = 0; i < list.length; i++){
+        if (list[i][0] === surah && list[i][1] === ayah){
+          if (lo < 0) lo = i;
+          hi = i;
+        }
+      }
+      if (lo < 0) return; // ayah isn't on this page
+      container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
+        var idx = +el.dataset.idx;
+        if (idx < lo || idx > hi) return;
+        // "ar" lights the Arabic row (word/num/sajda), "tr" lights the Indonesian glosses
+        if (h.ar && !el.classList.contains("wgloss")) el.classList.add("hl-" + h.ar);
+        if (h.tr && el.classList.contains("wgloss")) el.classList.add("hl-" + h.tr);
+      });
+      if (notes[key]){
+        var num = container.querySelector('.num[data-idx="' + hi + '"]');
+        if (num) num.classList.add("has-note");
+      }
+    });
+  }
+
   // one place for "a page just rendered" playback bookkeeping: re-light the playing
   // ayah, restart its karaoke state (so playback survives page advances mid-ayah — the
   // reveal catches up in one batch once the page's data lands), and keep following it
   function afterPageRender(){
     applyPlayingHighlight();
+    applyAyahDecorations();
     if (playingAyah && Reciter.rangeActive()){
       beginKaraoke(playingAyah);
       if (audioPrefs.autoScroll) scrollPlayingAyahIntoView();
@@ -1211,41 +1267,181 @@
     });
   }
 
-  // ---------------- long-press a word/ayah to bookmark the page ----------------
+  // ---------------- per-ayah annotations: stabilo highlights + notes (localStorage only) ----------------
+  // Keyed "surah:ayah" → { ar: 1..4, tr: 1..4 } for highlights (color class indexes into
+  // .hl-1..hl-4 in style.css; missing/null = no stabilo on that side), plain string for notes.
+  var HIGHLIGHTS_KEY = "mushafHifzHighlights";
+  var NOTES_KEY = "mushafHifzNotes";
+  var HIGHLIGHT_COLORS = 4;
+  // must match the .hl-1..hl-4 backgrounds in style.css (kuning, hijau, biru, pink)
+  var HL_SWATCHES = ["#F7D64A", "#8FD98F", "#7EC8F2", "#F5A8D0"];
+
+  function ayahKey(surah, ayah){ return surah + ":" + ayah; }
+
+  function loadAnnotationMap(key, isValidValue){
+    try{
+      var obj = JSON.parse(localStorage.getItem(key) || "{}");
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+      var out = {};
+      for (var k in obj){
+        var parts = k.split(":");
+        if (parts.length !== 2) continue;
+        var s = +parts[0], a = +parts[1];
+        if (!Number.isInteger(s) || s < 1 || s > 114 || !Number.isInteger(a) || a < 1 || a > 286) continue;
+        if (isValidValue(obj[k])) out[k] = obj[k];
+      }
+      return out;
+    } catch(e){
+      return {};
+    }
+  }
+
+  function validHighlightColor(v){
+    return v == null || (Number.isInteger(v) && v >= 1 && v <= HIGHLIGHT_COLORS);
+  }
+
+  var highlights = loadAnnotationMap(HIGHLIGHTS_KEY, function(v){
+    return v && typeof v === "object" && validHighlightColor(v.ar) && validHighlightColor(v.tr);
+  });
+
+  var notes = loadAnnotationMap(NOTES_KEY, function(v){
+    return typeof v === "string" && v.length > 0 && v.length <= 2000;
+  });
+
+  function saveHighlights(){
+    try{ localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(highlights)); } catch(e){ /* storage unavailable (private mode/full) — just won't persist */ }
+  }
+
+  function saveNotes(){
+    try{ localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch(e){ /* storage unavailable — just won't persist */ }
+  }
+
+  function setHighlight(surah, ayah, target, color){ // target "ar"|"tr"; color 1..4, or null to clear that side
+    var key = ayahKey(surah, ayah);
+    var h = highlights[key] || {};
+    h[target] = color;
+    if (!h.ar && !h.tr) delete highlights[key]; // fully-cleaned entries don't linger
+    else highlights[key] = h;
+    saveHighlights();
+    applyAyahDecorations();
+  }
+
+  function getNoteText(surah, ayah){ return notes[ayahKey(surah, ayah)] || ""; }
+
+  function setNote(surah, ayah, text){
+    var key = ayahKey(surah, ayah);
+    var t = (text || "").trim();
+    if (t) notes[key] = t;
+    else delete notes[key];
+    saveNotes();
+  }
+
+  // ---------------- long-press a word/translation → ayah actions: markah, stabilo, catatan ----------------
   var LONG_PRESS_MS = 500;
   var LONG_PRESS_MOVE_TOLERANCE = 10; // px — cancel if the finger drifts (scrolling instead)
   var suppressNextWordClick = false; // set once a long-press fires, so the trailing click doesn't also reveal the word
-  var bookmarkPopupEl = null;
+  var ayahPopupEl = null;
 
-  function ensureBookmarkPopup(){
-    if (bookmarkPopupEl) return bookmarkPopupEl;
-    bookmarkPopupEl = document.createElement("div");
-    bookmarkPopupEl.className = "bookmark-popup";
-    var btn = document.createElement("button");
-    btn.type = "button";
-    bookmarkPopupEl.appendChild(btn);
-    document.body.appendChild(bookmarkPopupEl);
-    btn.addEventListener("click", function(){
-      var target = bookmarkPopupEl.__target;
-      if (target) toggleBookmark(target.surah, target.ayah, currentPage);
-      hideBookmarkPopup();
+  function syncAyahPopupState(){
+    if (!ayahPopupEl || !ayahPopupEl.__target) return;
+    var t = ayahPopupEl.__target;
+    var h = highlights[ayahKey(t.surah, t.ayah)] || {};
+    ayahPopupEl.querySelectorAll(".ap-hl-row").forEach(function(row){
+      var current = row.dataset.hlTarget === "ar" ? h.ar : h.tr;
+      row.querySelectorAll(".ap-swatch").forEach(function(b){
+        b.classList.toggle("on", +b.dataset.color === (current || 0));
+      });
+      row.querySelector(".ap-off").classList.toggle("on", !current);
     });
+    ayahPopupEl.querySelector(".ap-bm").textContent =
+      isBookmarked(t.surah, t.ayah) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
+    ayahPopupEl.querySelector(".ap-note").textContent =
+      getNoteText(t.surah, t.ayah) ? "📝 Edit catatan" : "📝 Tambah catatan";
+  }
+
+  function buildHlRow(label, target){
+    var row = document.createElement("div");
+    row.className = "ap-hl-row";
+    row.dataset.hlTarget = target;
+    var lab = document.createElement("span");
+    lab.className = "ap-hl-label";
+    lab.textContent = label;
+    row.appendChild(lab);
+    var wrap = document.createElement("div");
+    wrap.className = "ap-swatches";
+    for (var c = 1; c <= HIGHLIGHT_COLORS; c++){
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "ap-swatch";
+      b.dataset.color = c;
+      b.style.background = HL_SWATCHES[c - 1];
+      b.title = "Stabilo " + label;
+      b.addEventListener("click", function(){
+        var t = ayahPopupEl.__target;
+        if (!t) return;
+        var h = highlights[ayahKey(t.surah, t.ayah)] || {};
+        // tapping the color already applied turns it off (toggle, like the ✕ does)
+        setHighlight(t.surah, t.ayah, target, h[target] === +this.dataset.color ? null : +this.dataset.color);
+        syncAyahPopupState();
+      });
+      wrap.appendChild(b);
+    }
+    var off = document.createElement("button");
+    off.type = "button";
+    off.className = "ap-off";
+    off.textContent = "✕";
+    off.title = "Hapus stabilo " + label;
+    off.addEventListener("click", function(){
+      var t = ayahPopupEl.__target;
+      if (!t) return;
+      setHighlight(t.surah, t.ayah, target, null);
+      syncAyahPopupState();
+    });
+    wrap.appendChild(off);
+    row.appendChild(wrap);
+    return row;
+  }
+
+  function ensureAyahPopup(){
+    if (ayahPopupEl) return ayahPopupEl;
+    ayahPopupEl = document.createElement("div");
+    ayahPopupEl.className = "ayah-popup";
+    var bm = document.createElement("button");
+    bm.type = "button";
+    bm.className = "ap-wide ap-bm";
+    bm.addEventListener("click", function(){
+      var t = ayahPopupEl.__target;
+      if (t) toggleBookmark(t.surah, t.ayah, currentPage);
+      hideAyahPopup();
+    });
+    var note = document.createElement("button");
+    note.type = "button";
+    note.className = "ap-wide ap-note";
+    note.addEventListener("click", function(){
+      var t = ayahPopupEl.__target;
+      hideAyahPopup();
+      if (t) showNoteSheet(t.surah, t.ayah);
+    });
+    ayahPopupEl.appendChild(bm);
+    ayahPopupEl.appendChild(buildHlRow("Arab", "ar"));
+    ayahPopupEl.appendChild(buildHlRow("Arti", "tr"));
+    ayahPopupEl.appendChild(note);
+    document.body.appendChild(ayahPopupEl);
     document.addEventListener("pointerdown", function(e){
-      if (bookmarkPopupEl.classList.contains("open") && !bookmarkPopupEl.contains(e.target)) hideBookmarkPopup();
+      if (ayahPopupEl.classList.contains("open") && !ayahPopupEl.contains(e.target)) hideAyahPopup();
     });
-    window.addEventListener("scroll", hideBookmarkPopup, true);
-    return bookmarkPopupEl;
+    window.addEventListener("scroll", hideAyahPopup, true);
+    return ayahPopupEl;
   }
 
-  function hideBookmarkPopup(){
-    if (bookmarkPopupEl) bookmarkPopupEl.classList.remove("open");
+  function hideAyahPopup(){
+    if (ayahPopupEl) ayahPopupEl.classList.remove("open");
   }
 
-  function showBookmarkPopup(x, y, surah, ayah){
-    var popup = ensureBookmarkPopup();
+  function showAyahPopup(x, y, surah, ayah){
+    var popup = ensureAyahPopup();
     popup.__target = { surah: surah, ayah: ayah };
-    var btn = popup.querySelector("button");
-    btn.textContent = isBookmarked(surah, ayah) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
+    syncAyahPopupState();
     popup.classList.add("open");
     popup.style.left = "0px";
     popup.style.top = "0px";
@@ -1259,7 +1455,7 @@
   // fixedAyahPair lets a caller that already knows which [surah,ayah] an element belongs to
   // (the ayah-mode view — see renderAyahPageContent) skip the data-idx lookup below, which
   // only resolves against pageWordAyahCache/pageLinesCache (the mushaf-mode line layout).
-  function wireLongPressBookmark(el, fixedAyahPair){
+  function wireLongPressAyahActions(el, fixedAyahPair){
     var timer = null;
     var startX = 0, startY = 0;
 
@@ -1277,7 +1473,7 @@
         timer = null;
         suppressNextWordClick = true;
         var ayahPair = fixedAyahPair || getPageWordAyahList(currentPage)[+el.dataset.idx];
-        if (ayahPair) showBookmarkPopup(startX, startY, ayahPair[0], ayahPair[1]);
+        if (ayahPair) showAyahPopup(startX, startY, ayahPair[0], ayahPair[1]);
       }, LONG_PRESS_MS);
     });
     el.addEventListener("pointermove", function(e){
@@ -1287,6 +1483,62 @@
     el.addEventListener("pointerup", cancel);
     el.addEventListener("pointerleave", cancel);
     el.addEventListener("pointercancel", cancel);
+  }
+
+  // ---------------- note editor sheet ----------------
+  var noteSheetEl = null;
+
+  function ensureNoteSheet(){
+    if (noteSheetEl) return noteSheetEl;
+    noteSheetEl = document.createElement("div");
+    noteSheetEl.className = "note-sheet";
+    var card = document.createElement("div");
+    card.className = "note-card";
+    card.innerHTML =
+      '<div class="note-title"></div>' +
+      '<textarea class="note-input" rows="4" placeholder="Tulis catatan untuk ayat ini…"></textarea>' +
+      '<div class="note-actions">' +
+        '<button type="button" class="note-delete">Hapus</button>' +
+        '<button type="button" class="note-cancel">Batal</button>' +
+        '<button type="button" class="note-save">Simpan</button>' +
+      '</div>';
+    noteSheetEl.appendChild(card);
+    noteSheetEl.querySelector(".note-cancel").addEventListener("click", hideNoteSheet);
+    noteSheetEl.querySelector(".note-save").addEventListener("click", function(){
+      var t = noteSheetEl.__target;
+      if (t){
+        setNote(t.surah, t.ayah, noteSheetEl.querySelector(".note-input").value);
+        renderPage(currentPage, true); // the note markup is baked into the ayah-view render
+      }
+      hideNoteSheet();
+    });
+    noteSheetEl.querySelector(".note-delete").addEventListener("click", function(){
+      var t = noteSheetEl.__target;
+      if (t){
+        setNote(t.surah, t.ayah, null);
+        renderPage(currentPage, true);
+      }
+      hideNoteSheet();
+    });
+    noteSheetEl.addEventListener("pointerdown", function(e){
+      if (e.target === noteSheetEl) hideNoteSheet(); // tap the dim backdrop to dismiss
+    });
+    document.body.appendChild(noteSheetEl);
+    return noteSheetEl;
+  }
+
+  function hideNoteSheet(){
+    if (noteSheetEl) noteSheetEl.classList.remove("open");
+  }
+
+  function showNoteSheet(surah, ayah){
+    var sheet = ensureNoteSheet();
+    sheet.__target = { surah: surah, ayah: ayah };
+    sheet.querySelector(".note-title").textContent = SURAH_META[surah - 1][2] + " · Ayat " + ayah;
+    var input = sheet.querySelector(".note-input");
+    input.value = getNoteText(surah, ayah);
+    sheet.classList.add("open");
+    input.focus();
   }
 
   // ---------------- reader shell ----------------
@@ -1589,7 +1841,7 @@
         else playAyahPair(getPageWordAyahList(currentPage)[idx]); // num/sajda = whole-ayah reveal
         renderPage(currentPage, true);
       });
-      if (el.classList.contains("word")) wireLongPressBookmark(el);
+      if (el.classList.contains("word") || el.classList.contains("wgloss")) wireLongPressAyahActions(el);
     });
 
     document.getElementById("pageInput").value = pageNo;
@@ -1661,6 +1913,7 @@
           (isSajdaAyah ? '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">سجدة</span>' : "") +
         '</div>' +
         (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation + '</div>' : "") +
+        (getNoteText(surah, ayah) ? '<div class="ayah-note">📝 ' + escapeHtml(getNoteText(surah, ayah)) + '</div>' : "") +
         '</div>';
       }
     });
@@ -1681,7 +1934,12 @@
     container.querySelectorAll(".ayah-block").forEach(function(block){
       var ayahPair = [+block.dataset.surah, +block.dataset.ayah];
       block.querySelectorAll(".ayah-word").forEach(function(wordEl){
-        wireLongPressBookmark(wordEl, ayahPair);
+        wireLongPressAyahActions(wordEl, ayahPair);
+      });
+      // the full-ayah translation is exactly what a reader wants to stabilo — make it a
+      // long-press target too (tapping it does nothing, unlike words)
+      block.querySelectorAll(".ayah-translation").forEach(function(trEl){
+        wireLongPressAyahActions(trEl, ayahPair);
       });
     });
 
@@ -1908,7 +2166,7 @@
   // ---------------- keyboard: space to reveal next word, backspace to undo ----------------
   document.addEventListener("keydown", function(e){
     var tag = (e.target.tagName || "").toLowerCase();
-    if (tag === "input") return;
+    if (tag === "input" || tag === "textarea") return;
 
     if (e.code === "Space"){
       e.preventDefault();
