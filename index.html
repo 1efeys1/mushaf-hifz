@@ -3,14 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<meta name="app-version" content="2026-09-04T03:32">
 <title>Mushaf Hifz — Alat Bantu Hafalan Qur'an</title>
 <!-- UI chrome fonts only (buttons/labels) — loaded from the web if available, harmless if
      offline since the CSS below already falls back to system sans-serif/serif for these. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="fonts.css">
-<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="fonts.css?v=2026-09-04T03:32">
+<link rel="stylesheet" href="style.css?v=2026-09-04T03:32">
 </head>
 <body>
 
@@ -118,6 +119,14 @@
         </select>
       </label>
     </div>
+
+    <div class="settings-group">
+      <div class="settings-label">Pembaruan</div>
+      <div class="update-row">
+        <button type="button" class="chip" id="checkUpdate">Periksa pembaruan</button>
+        <span class="update-status" id="updateStatus"></span>
+      </div>
+    </div>
   </aside>
 
   <div class="audio-bar" id="audioBar">
@@ -155,11 +164,11 @@
   </div>
 </div>
 
-<script src="surah-meta.js"></script>
-<script src="ayah-page.js"></script>
-<script src="quran-api.js"></script>
-<script src="page-layout.js"></script>
-<script src="audio.js"></script>
-<script src="app.js"></script>
+<script src="surah-meta.js?v=2026-09-04T03:32"></script>
+<script src="ayah-page.js?v=2026-09-04T03:32"></script>
+<script src="quran-api.js?v=2026-09-04T03:32"></script>
+<script src="page-layout.js?v=2026-09-04T03:32"></script>
+<script src="audio.js?v=2026-09-04T03:32"></script>
+<script src="app.js?v=2026-09-04T03:32"></script>
 </body>
 </html>

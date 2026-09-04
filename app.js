@@ -1642,9 +1642,43 @@
   }
 
   // ---------------- settings panel (right edge) ----------------
+
+  // The Android app is a thin Capacitor webview over this same hosted page, and its HTTP
+  // cache can keep serving a stale build long after GitHub Pages has the new one. This
+  // fetches the deployed index.html under a unique query (bypasses both the local cache
+  // and the CDN edge), compares the app-version meta stamped by build/make-www.js, and
+  // on a mismatch reloads under a fresh ?v= URL — which also pulls the freshly-stamped
+  // asset URLs, so nothing stale survives the reload.
+  function checkForUpdate(){
+    var btn = document.getElementById("checkUpdate");
+    var status = document.getElementById("updateStatus");
+    var meta = document.querySelector('meta[name="app-version"]');
+    var local = meta ? meta.content : "";
+    btn.disabled = true;
+    status.textContent = "Memeriksa…";
+    fetch("index.html?cb=" + Date.now(), { cache: "no-store" })
+      .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(function(text){
+        var m = text.match(/<meta\s+name="app-version"\s+content="([^"]*)"/);
+        var remote = m ? m[1] : "";
+        if (remote && remote !== local){
+          status.textContent = "Versi baru ditemukan — memuat…";
+          location.replace("?v=" + encodeURIComponent(remote));
+        } else {
+          status.textContent = remote ? "Sudah versi terbaru ✓" : "Server tidak melaporkan versi";
+          btn.disabled = false;
+        }
+      })
+      .catch(function(){
+        status.textContent = "Gagal memeriksa — periksa koneksi";
+        btn.disabled = false;
+      });
+  }
+
   function wireSettingsPanel(){
     document.getElementById("viewByMushaf").addEventListener("click", function(){ setViewMode("mushaf"); });
     document.getElementById("viewByAyat").addEventListener("click", function(){ setViewMode("ayah"); });
+    document.getElementById("checkUpdate").addEventListener("click", checkForUpdate);
 
     document.getElementById("contentArabic").addEventListener("change", function(e){ setContentPref("arabic", e.target.checked); });
     document.getElementById("contentTranslation").addEventListener("change", function(e){ setContentPref("translation", e.target.checked); });
