@@ -364,8 +364,8 @@
         }
       }
     });
-    // drag-selected word ranges ride on top of whole-ayah stabilo: they recolor the word
-    // cells (arabic + gloss) they cover, replacing whatever the whole-ayah pass put there
+    // drag-selected word ranges ride on top of whole-ayah stabilo: "ar" recolors the
+    // arabic words, "tr" their glosses — replacing whatever the whole-ayah pass put there
     wordHighlights.forEach(function(entry){
       var list = null; // mushaf mode resolves ayahs through the page-wide idx list
       container.querySelectorAll(".word, .wgloss, .aw-gloss").forEach(function(el){
@@ -377,8 +377,9 @@
         if (!pair || pair[0] !== entry.s || pair[1] !== entry.a) return;
         var w = +el.dataset.w;
         if (w < entry.w1 || w > entry.w2) return;
+        var color = (el.classList.contains("wgloss") || el.classList.contains("aw-gloss")) ? entry.tr : entry.ar;
         el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
-        el.classList.add("hl-" + entry.c);
+        if (color) el.classList.add("hl-" + color);
       });
     });
   }
@@ -1310,43 +1311,51 @@
     });
   }
 
-  // the "Catatan" sub-tab of the Markah panel — every saved note, newest-reading-order
-  // (surah then ayah), jumping straight to its ayah like a bookmark row does
+  // the "Catatan" sub-tab of the Markah panel — whole-ayah notes and word-range notes
+  // together, reading order (surah, ayah, then range start), jumping straight to the ayah
   function renderNoteList(){
-    var keys = Object.keys(notes).sort(function(x, y){
-      var a = x.split(":"), b = y.split(":");
-      return (+a[0] - +b[0]) || (+a[1] - +b[1]);
+    var entries = [];
+    Object.keys(notes).forEach(function(key){
+      var p = key.split(":");
+      entries.push({ s: +p[0], a: +p[1], w1: null, text: notes[key] });
     });
+    Object.keys(wordNotes).forEach(function(key){
+      var p = key.split(":");
+      var r = p[2].split("-");
+      entries.push({ s: +p[0], a: +p[1], w1: +r[0], w2: +r[1], text: wordNotes[key] });
+    });
+    entries.sort(function(x, y){ return x.s - y.s || x.a - y.a || (x.w1 || 0) - (y.w1 || 0); });
     var countEl = document.getElementById("noteCount");
-    if (countEl) countEl.textContent = keys.length || "";
+    if (countEl) countEl.textContent = entries.length || "";
     var container = document.getElementById("noteList");
     if (!container) return;
-    if (!keys.length){
+    if (!entries.length){
       container.innerHTML = '<div class="bookmark-empty">Belum ada catatan.<br>Tahan sebuah kata/ayat, lalu pilih 📝 Catatan.</div>';
       return;
     }
     container.innerHTML = "";
-    keys.forEach(function(key){
-      var parts = key.split(":");
-      var surah = +parts[0], ayah = +parts[1];
-      var page = AYAH_PAGE[surah - 1][ayah - 1];
+    entries.forEach(function(entry){
+      var page = AYAH_PAGE[entry.s - 1][entry.a - 1];
       var item = document.createElement("div");
       item.className = "bookmark-item note-item";
       item.innerHTML =
-        '<div class="bm-ayah">' + ayah + '</div>' +
+        '<div class="bm-ayah">' + entry.a + '</div>' +
         '<div class="bm-info">' +
-          '<div class="bm-surah">' + SURAH_META[surah - 1][1] + ' <span class="bm-lat">' + SURAH_META[surah - 1][2] + '</span></div>' +
-          '<div class="note-preview">' + escapeHtml(notes[key]) + '</div>' +
-          '<div class="bm-meta">Ayat ' + ayah + ' · Halaman ' + page + '</div>' +
+          '<div class="bm-surah">' + SURAH_META[entry.s - 1][1] + ' <span class="bm-lat">' + SURAH_META[entry.s - 1][2] + '</span></div>' +
+          '<div class="note-preview">' + escapeHtml(entry.text) + '</div>' +
+          '<div class="bm-meta">Ayat ' + entry.a +
+            (entry.w1 !== null ? ' · kata ' + entry.w1 + '-' + entry.w2 : '') +
+            ' · Halaman ' + page + '</div>' +
         '</div>' +
         '<button class="bm-remove" type="button" title="Hapus catatan">✕</button>';
       item.addEventListener("click", function(e){
         if (e.target.closest(".bm-remove")) return;
-        goToAyah(surah, ayah, page);
+        goToAyah(entry.s, entry.a, page);
       });
       item.querySelector(".bm-remove").addEventListener("click", function(e){
         e.stopPropagation();
-        setNote(surah, ayah, null); // re-renders this list
+        if (entry.w1 !== null) setWordNote(entry.s, entry.a, entry.w1, entry.w2, null); // re-renders this list
+        else setNote(entry.s, entry.a, null);
         renderPage(currentPage, true); // drop the inline note if that ayah is on the open page
       });
       container.appendChild(item);
@@ -1424,7 +1433,7 @@
   }
 
   // ---------------- partial-ayah word highlights (long-press + drag) ----------------
-  var WORD_HL_KEY = "mushafHifzWordHighlights"; // [{s, a, w1, w2, c}] — w = ordinal within the ayah
+  var WORD_HL_KEY = "mushafHifzWordHighlights"; // [{s, a, w1, w2, ar, tr}] — w = ordinal within the ayah
 
   function loadWordHighlights(){
     try{
@@ -1434,8 +1443,13 @@
         return e && Number.isInteger(e.s) && e.s >= 1 && e.s <= 114 &&
           Number.isInteger(e.a) && e.a >= 1 && e.a <= 286 &&
           Number.isInteger(e.w1) && Number.isInteger(e.w2) && e.w1 >= 0 && e.w1 <= e.w2 &&
-          Number.isInteger(e.c) && e.c >= 1 && e.c <= HIGHLIGHT_COLORS;
-      }).map(function(e){ return { s: e.s, a: e.a, w1: e.w1, w2: e.w2, c: e.c }; });
+          validHighlightColor(e.ar) && validHighlightColor(e.tr) && validHighlightColor(e.c);
+      }).map(function(e){
+        // legacy single-color entries lit the whole cell — carry them over as ar+tr
+        var ar = e.ar != null ? e.ar : e.c;
+        var tr = e.tr != null ? e.tr : e.c;
+        return { s: e.s, a: e.a, w1: e.w1, w2: e.w2, ar: ar != null ? ar : null, tr: tr != null ? tr : null };
+      });
     } catch(e){
       return [];
     }
@@ -1447,16 +1461,84 @@
     try{ localStorage.setItem(WORD_HL_KEY, JSON.stringify(wordHighlights)); } catch(e){ /* storage unavailable — just won't persist */ }
   }
 
-  // set (or clear, color=null) the highlight of a word-ordinal range; overlapping ranges
-  // in the same ayah are absorbed, so entries never stack over the same words
-  function setWordHighlight(surah, ayah, w1, w2, color){
+  // set (or clear, color=null) one side ("ar" lights the arabic words, "tr" their glosses)
+  // of a word-ordinal range. Overlapping ranges in the same ayah are absorbed, so entries
+  // never stack over the same words; an exact-range match is mutated instead of replaced
+  // so Arab and Arti can be colored independently on the same selection.
+  function setWordHighlight(surah, ayah, w1, w2, target, color){
+    var exact = null;
     wordHighlights = wordHighlights.filter(function(e){
-      return !(e.s === surah && e.a === ayah && e.w1 <= w2 && e.w2 >= w1);
+      if (e.s !== surah || e.a !== ayah || e.w1 > w2 || e.w2 < w1) return true;
+      if (e.w1 === w1 && e.w2 === w2){ exact = e; return true; }
+      return false; // partial overlap — absorbed by the incoming range
     });
-    if (color) wordHighlights.push({ s: surah, a: ayah, w1: w1, w2: w2, c: color });
+    if (color && !exact){
+      exact = { s: surah, a: ayah, w1: w1, w2: w2, ar: null, tr: null };
+      wordHighlights.push(exact);
+    }
+    if (exact){
+      exact[target] = color;
+      if (!exact.ar && !exact.tr){
+        wordHighlights = wordHighlights.filter(function(e){ return e !== exact; });
+      }
+    }
     wordHighlights.sort(function(x, y){ return x.s - y.s || x.a - y.a || x.w1 - y.w1; });
     saveWordHighlights();
     applyAyahDecorations();
+  }
+
+  // ---------------- word-range notes ("catatan kata") ----------------
+  var WORD_NOTES_KEY = "mushafHifzWordNotes"; // "s:a:w1-w2" → text
+
+  function loadWordNotes(){
+    try{
+      var obj = JSON.parse(localStorage.getItem(WORD_NOTES_KEY) || "{}");
+      if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
+      var out = {};
+      for (var k in obj){
+        var p = k.split(":");
+        if (p.length !== 3) continue;
+        var range = p[2].split("-");
+        var s = +p[0], a = +p[1], w1 = +range[0], w2 = +range[1];
+        if (!Number.isInteger(s) || s < 1 || s > 114 || !Number.isInteger(a) || a < 1 || a > 286 ||
+          !Number.isInteger(w1) || !Number.isInteger(w2) || w1 < 0 || w1 > w2) continue;
+        if (typeof obj[k] === "string" && obj[k].length > 0 && obj[k].length <= 2000) out[k] = obj[k];
+      }
+      return out;
+    } catch(e){
+      return {};
+    }
+  }
+
+  var wordNotes = loadWordNotes();
+
+  function saveWordNotes(){
+    try{ localStorage.setItem(WORD_NOTES_KEY, JSON.stringify(wordNotes)); } catch(e){ /* storage unavailable — just won't persist */ }
+  }
+
+  function wordNoteKey(surah, ayah, w1, w2){ return surah + ":" + ayah + ":" + w1 + "-" + w2; }
+
+  function getWordNoteText(surah, ayah, w1, w2){ return wordNotes[wordNoteKey(surah, ayah, w1, w2)] || ""; }
+
+  function setWordNote(surah, ayah, w1, w2, text){
+    var key = wordNoteKey(surah, ayah, w1, w2);
+    var t = (text || "").trim();
+    if (t) wordNotes[key] = t;
+    else delete wordNotes[key];
+    saveWordNotes();
+    renderNoteList(); // keep the sidebar Catatan sub-tab in sync from every mutation path
+  }
+
+  function wordNotesFor(surah, ayah){
+    var out = [];
+    for (var k in wordNotes){
+      var p = k.split(":");
+      if (+p[0] !== surah || +p[1] !== ayah) continue;
+      var r = p[2].split("-");
+      out.push({ w1: +r[0], w2: +r[1], text: wordNotes[k] });
+    }
+    out.sort(function(x, y){ return x.w1 - y.w1; });
+    return out;
   }
 
   // ---------------- long-press a word/translation → ayah actions: markah, stabilo, catatan ----------------
@@ -1465,24 +1547,31 @@
   var suppressNextWordClick = false; // set once a long-press fires, so the trailing click doesn't also reveal the word
   var ayahPopupEl = null;
 
-  function syncAyahPopupState(){
-    if (!ayahPopupEl || !ayahPopupEl.__target) return;
-    var t = ayahPopupEl.__target;
-    var h = highlights[ayahKey(t.surah, t.ayah)] || {};
-    ayahPopupEl.querySelectorAll(".ap-hl-row").forEach(function(row){
-      var current = row.dataset.hlTarget === "ar" ? h.ar : h.tr;
+  // shared swatch-row sync: currentOf(target) returns that side's applied color (or null)
+  function syncHlRows(popupEl, currentOf){
+    popupEl.querySelectorAll(".ap-hl-row").forEach(function(row){
+      var current = currentOf(row.dataset.hlTarget);
       row.querySelectorAll(".ap-swatch").forEach(function(b){
         b.classList.toggle("on", +b.dataset.color === (current || 0));
       });
       row.querySelector(".ap-off").classList.toggle("on", !current);
     });
+  }
+
+  function syncAyahPopupState(){
+    if (!ayahPopupEl || !ayahPopupEl.__target) return;
+    var t = ayahPopupEl.__target;
+    var h = highlights[ayahKey(t.surah, t.ayah)] || {};
+    syncHlRows(ayahPopupEl, function(target){ return h[target]; });
     ayahPopupEl.querySelector(".ap-bm").textContent =
       isBookmarked(t.surah, t.ayah) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
     ayahPopupEl.querySelector(".ap-note").textContent =
       getNoteText(t.surah, t.ayah) ? "📝 Edit catatan" : "📝 Tambah catatan";
   }
 
-  function buildHlRow(label, target){
+  // pick(colorOrNull) fully owns toggle/apply/sync for its popup — the row is just chrome;
+  // target ("ar"|"tr") only tags the row so the shared swatch-sync knows which side it is
+  function buildHlRow(label, target, pick){
     var row = document.createElement("div");
     row.className = "ap-hl-row";
     row.dataset.hlTarget = target;
@@ -1499,14 +1588,7 @@
       b.dataset.color = c;
       b.style.background = HL_SWATCHES[c - 1];
       b.title = "Stabilo " + label;
-      b.addEventListener("click", function(){
-        var t = ayahPopupEl.__target;
-        if (!t) return;
-        var h = highlights[ayahKey(t.surah, t.ayah)] || {};
-        // tapping the color already applied turns it off (toggle, like the ✕ does)
-        setHighlight(t.surah, t.ayah, target, h[target] === +this.dataset.color ? null : +this.dataset.color);
-        syncAyahPopupState();
-      });
+      b.addEventListener("click", function(){ pick(+this.dataset.color); });
       wrap.appendChild(b);
     }
     var off = document.createElement("button");
@@ -1514,12 +1596,7 @@
     off.className = "ap-off";
     off.textContent = "✕";
     off.title = "Hapus stabilo " + label;
-    off.addEventListener("click", function(){
-      var t = ayahPopupEl.__target;
-      if (!t) return;
-      setHighlight(t.surah, t.ayah, target, null);
-      syncAyahPopupState();
-    });
+    off.addEventListener("click", function(){ pick(null); });
     wrap.appendChild(off);
     row.appendChild(wrap);
     return row;
@@ -1545,9 +1622,19 @@
       hideAyahPopup();
       if (t) showNoteSheet(t.surah, t.ayah);
     });
+    function pickSide(target){
+      return function(color){
+        var t = ayahPopupEl.__target;
+        if (!t) return;
+        var h = highlights[ayahKey(t.surah, t.ayah)] || {};
+        // tapping the color already applied turns it off (toggle, like the ✕ does)
+        setHighlight(t.surah, t.ayah, target, color !== null && h[target] === color ? null : color);
+        syncAyahPopupState();
+      };
+    }
     ayahPopupEl.appendChild(bm);
-    ayahPopupEl.appendChild(buildHlRow("Arab", "ar"));
-    ayahPopupEl.appendChild(buildHlRow("Arti", "tr"));
+    ayahPopupEl.appendChild(buildHlRow("Arab", "ar", pickSide("ar")));
+    ayahPopupEl.appendChild(buildHlRow("Arti", "tr", pickSide("tr")));
     ayahPopupEl.appendChild(note);
     document.body.appendChild(ayahPopupEl);
     document.addEventListener("pointerdown", function(e){
@@ -1731,7 +1818,7 @@
     detachWordSel();
     tintWordSelection();
     if (sel.curIdx !== sel.originIdx){
-      showWordHlPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
+      showWordPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
     }
   }
 
@@ -1745,69 +1832,88 @@
       showAyahPopup(e.clientX, e.clientY, sel.s, sel.a);
       return;
     }
-    showWordHlPopup(e.clientX, e.clientY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
+    showWordPopup(e.clientX, e.clientY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
   }
 
-  // ---------------- word-range highlight popup (shown on selection release) ----------------
-  var wordHlPopupEl = null;
+  // ---------------- word-range popup (shown on selection release) ----------------
+  // Same rows/chrome as the whole-ayah popup, but the swatches color the SELECTED words
+  // ("ar" = the arabic words, "tr" = their glosses) and the note button writes a note
+  // attached to that word range.
+  var wordPopupEl = null;
 
-  function ensureWordHlPopup(){
-    if (wordHlPopupEl) return wordHlPopupEl;
-    wordHlPopupEl = document.createElement("div");
-    wordHlPopupEl.className = "word-hl-popup";
+  function exactWordEntry(r){
+    for (var i = 0; i < wordHighlights.length; i++){
+      var e = wordHighlights[i];
+      if (e.s === r.s && e.a === r.a && e.w1 === r.w1 && e.w2 === r.w2) return e;
+    }
+    return null;
+  }
+
+  function syncWordPopupState(){
+    if (!wordPopupEl || !wordPopupEl.__range) return;
+    var r = wordPopupEl.__range;
+    var e = exactWordEntry(r);
+    syncHlRows(wordPopupEl, function(target){ return e ? e[target] : null; });
+    wordPopupEl.querySelector(".ap-bm").textContent =
+      isBookmarked(r.s, r.a) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
+    wordPopupEl.querySelector(".ap-note").textContent =
+      getWordNoteText(r.s, r.a, r.w1, r.w2) ? "📝 Edit catatan kata ini" : "📝 Catat kata terpilih";
+  }
+
+  function ensureWordPopup(){
+    if (wordPopupEl) return wordPopupEl;
+    wordPopupEl = document.createElement("div");
+    wordPopupEl.className = "ayah-popup word-popup";
     var title = document.createElement("div");
     title.className = "whl-title";
-    var wrap = document.createElement("div");
-    wrap.className = "ap-swatches";
-    for (var c = 1; c <= HIGHLIGHT_COLORS; c++){
-      var b = document.createElement("button");
-      b.type = "button";
-      b.className = "ap-swatch";
-      b.dataset.color = c;
-      b.style.background = HL_SWATCHES[c - 1];
-      b.title = "Stabilo kata terpilih";
-      b.addEventListener("click", function(){
-        var r = wordHlPopupEl.__range;
+    var bm = document.createElement("button");
+    bm.type = "button";
+    bm.className = "ap-wide ap-bm";
+    bm.addEventListener("click", function(){
+      var r = wordPopupEl.__range;
+      if (r) toggleBookmark(r.s, r.a, currentPage);
+      hideWordPopup();
+    });
+    var note = document.createElement("button");
+    note.type = "button";
+    note.className = "ap-wide ap-note";
+    note.addEventListener("click", function(){
+      var r = wordPopupEl.__range;
+      hideWordPopup();
+      if (r) showNoteSheet(r.s, r.a, { w1: r.w1, w2: r.w2 });
+    });
+    function pickSide(target){
+      return function(color){
+        var r = wordPopupEl.__range;
         if (!r) return;
-        var color = +this.dataset.color;
-        var exact = wordHighlights.some(function(e){
-          return e.s === r.s && e.a === r.a && e.w1 === r.w1 && e.w2 === r.w2 && e.c === color;
-        });
-        setWordHighlight(r.s, r.a, r.w1, r.w2, exact ? null : color); // same swatch again = off
-        hideWordHlPopup();
-      });
-      wrap.appendChild(b);
+        var e = exactWordEntry(r);
+        setWordHighlight(r.s, r.a, r.w1, r.w2, target, color !== null && e && e[target] === color ? null : color);
+        syncWordPopupState();
+      };
     }
-    var off = document.createElement("button");
-    off.type = "button";
-    off.className = "ap-off";
-    off.textContent = "✕";
-    off.title = "Hapus stabilo kata terpilih";
-    off.addEventListener("click", function(){
-      var r = wordHlPopupEl.__range;
-      if (r) setWordHighlight(r.s, r.a, r.w1, r.w2, null);
-      hideWordHlPopup();
-    });
-    wrap.appendChild(off);
-    wordHlPopupEl.appendChild(title);
-    wordHlPopupEl.appendChild(wrap);
-    document.body.appendChild(wordHlPopupEl);
+    wordPopupEl.appendChild(title);
+    wordPopupEl.appendChild(bm);
+    wordPopupEl.appendChild(buildHlRow("Arab", "ar", pickSide("ar")));
+    wordPopupEl.appendChild(buildHlRow("Arti", "tr", pickSide("tr")));
+    wordPopupEl.appendChild(note);
+    document.body.appendChild(wordPopupEl);
     document.addEventListener("pointerdown", function(e){
-      if (wordHlPopupEl.classList.contains("open") && !wordHlPopupEl.contains(e.target)) hideWordHlPopup();
+      if (wordPopupEl.classList.contains("open") && !wordPopupEl.contains(e.target)) hideWordPopup();
     });
-    window.addEventListener("scroll", hideWordHlPopup, true);
-    return wordHlPopupEl;
+    window.addEventListener("scroll", hideWordPopup, true);
+    return wordPopupEl;
   }
 
-  function hideWordHlPopup(){
-    if (wordHlPopupEl) wordHlPopupEl.classList.remove("open");
+  function hideWordPopup(){
+    if (wordPopupEl) wordPopupEl.classList.remove("open");
   }
 
-  function showWordHlPopup(x, y, surah, ayah, w1, w2){
-    var popup = ensureWordHlPopup();
+  function showWordPopup(x, y, surah, ayah, w1, w2){
+    var popup = ensureWordPopup();
     popup.__range = { s: surah, a: ayah, w1: w1, w2: w2 };
     popup.querySelector(".whl-title").textContent =
-      (w2 - w1 + 1) + " kata · " + SURAH_META[surah - 1][2] + " " + surah + ":" + ayah;
+      (w2 - w1 + 1) + " kata terpilih · " + SURAH_META[surah - 1][2] + " " + surah + ":" + ayah;
+    syncWordPopupState();
     popup.classList.add("open");
     popup.style.left = "0px";
     popup.style.top = "0px";
@@ -1840,7 +1946,9 @@
     noteSheetEl.querySelector(".note-save").addEventListener("click", function(){
       var t = noteSheetEl.__target;
       if (t){
-        setNote(t.surah, t.ayah, noteSheetEl.querySelector(".note-input").value);
+        var value = noteSheetEl.querySelector(".note-input").value;
+        if (t.range) setWordNote(t.surah, t.ayah, t.range.w1, t.range.w2, value);
+        else setNote(t.surah, t.ayah, value);
         renderPage(currentPage, true); // the note markup is baked into the ayah-view render
       }
       hideNoteSheet();
@@ -1848,7 +1956,8 @@
     noteSheetEl.querySelector(".note-delete").addEventListener("click", function(){
       var t = noteSheetEl.__target;
       if (t){
-        setNote(t.surah, t.ayah, null);
+        if (t.range) setWordNote(t.surah, t.ayah, t.range.w1, t.range.w2, null);
+        else setNote(t.surah, t.ayah, null);
         renderPage(currentPage, true);
       }
       hideNoteSheet();
@@ -1864,12 +1973,14 @@
     if (noteSheetEl) noteSheetEl.classList.remove("open");
   }
 
-  function showNoteSheet(surah, ayah){
+  // range ({w1,w2}) targets a word-range note ("catatan kata") instead of the whole ayah
+  function showNoteSheet(surah, ayah, range){
     var sheet = ensureNoteSheet();
-    sheet.__target = { surah: surah, ayah: ayah };
-    sheet.querySelector(".note-title").textContent = SURAH_META[surah - 1][2] + " · Ayat " + ayah;
+    sheet.__target = { surah: surah, ayah: ayah, range: range || null };
+    sheet.querySelector(".note-title").textContent =
+      SURAH_META[surah - 1][2] + " · Ayat " + ayah + (range ? " · kata " + range.w1 + "-" + range.w2 : "");
     var input = sheet.querySelector(".note-input");
-    input.value = getNoteText(surah, ayah);
+    input.value = range ? getWordNoteText(surah, ayah, range.w1, range.w2) : getNoteText(surah, ayah);
     sheet.classList.add("open");
     input.focus();
   }
@@ -2281,6 +2392,15 @@
         '</div>' +
         (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation + '</div>' : "") +
         (getNoteText(surah, ayah) ? '<div class="ayah-note">📝 ' + escapeHtml(getNoteText(surah, ayah)) + '</div>' : "") +
+        wordNotesFor(surah, ayah).map(function(wn){
+          var quote = "";
+          words.forEach(function(pair, wi){
+            var ord = startWord + wi;
+            if (ord >= wn.w1 && ord <= wn.w2) quote += (quote ? " " : "") + pair[0];
+          });
+          return '<div class="ayah-note word-note" data-w1="' + wn.w1 + '" data-w2="' + wn.w2 + '">📝 ' +
+            '<span class="wn-quote">' + quote + '</span> — ' + escapeHtml(wn.text) + '</div>';
+        }).join("") +
         '</div>';
       }
     });
@@ -2308,9 +2428,15 @@
       block.querySelectorAll(".ayah-translation").forEach(function(trEl){
         wireLongPressAyahActions(trEl, ayahPair);
       });
-      // visible note boxes open straight into the editor on tap
+      // visible note boxes open straight into the editor on tap — whole-ayah and word-range
       block.querySelectorAll(".ayah-note").forEach(function(noteEl){
-        noteEl.addEventListener("click", function(){ showNoteSheet(ayahPair[0], ayahPair[1]); });
+        if (noteEl.classList.contains("word-note")){
+          noteEl.addEventListener("click", function(){
+            showNoteSheet(ayahPair[0], ayahPair[1], { w1: +noteEl.dataset.w1, w2: +noteEl.dataset.w2 });
+          });
+        } else {
+          noteEl.addEventListener("click", function(){ showNoteSheet(ayahPair[0], ayahPair[1]); });
+        }
       });
     });
 
@@ -2513,6 +2639,7 @@
     var startX = 0, startY = 0, tracking = false;
 
     el.addEventListener("touchstart", function(e){
+      if (wordSel){ tracking = false; return; } // a word-range selection owns this gesture
       if (e.touches.length !== 1){ tracking = false; return; } // pinch start — not a swipe
       var line = e.target.closest ? e.target.closest(".mushaf-line") : null;
       if (line && line.scrollWidth > line.clientWidth + 1){ tracking = false; return; }
@@ -2526,6 +2653,7 @@
     el.addEventListener("touchend", function(e){
       if (!tracking) return;
       tracking = false;
+      if (wordSel) return; // the hold fired mid-gesture — this drag is a selection, not a page turn
       if (pageZoom > 1.001) return; // panning a zoomed page, not turning it
       var t = e.changedTouches[0];
       var dx = t.clientX - startX, dy = t.clientY - startY;

@@ -850,24 +850,12 @@
   .word, .wgloss, .ayah-word{ touch-action:pan-y; }
   .word.wsel, .wgloss.wsel, .ayah-word.wsel{ background:#C9A64B73; border-radius:4px; }
 
-  /* word-range highlight popup (after a drag-select) — same chrome as .ayah-popup */
-  .word-hl-popup{
-    position:fixed;
-    z-index:50;
-    display:none;
-    background:#173626;
-    border:1px solid var(--gold-soft);
-    border-radius:10px;
-    box-shadow:0 10px 30px -8px #000000cc;
-    padding:8px 10px 6px;
-  }
-  .word-hl-popup.open{ display:block; }
+  /* context line at the top of the word-range popup (which otherwise reuses .ayah-popup) */
   .whl-title{
     font-size:11.5px;
     color:#cfd8c6;
     font-family:'Work Sans',sans-serif;
-    margin-bottom:6px;
-    text-align:center;
+    margin:4px 12px 6px;
     white-space:nowrap;
   }
   .ayah-words.hl-1, .ayah-words.hl-2, .ayah-words.hl-3, .ayah-words.hl-4,
@@ -1032,6 +1020,14 @@
     margin-top:8px;
     white-space:pre-wrap;
     overflow-wrap:break-word;
+  }
+  /* the quoted arabic words inside a word-range note box */
+  .ayah-note .wn-quote{
+    font-family:'Amiri Quran',serif;
+    font-size:1.25em;
+    direction:rtl;
+    unicode-bidi:embed;
+    color:#20281F;
   }
 
   .page-number{
