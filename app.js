@@ -1705,8 +1705,16 @@
   // After the 500ms hold fires, finger moves extend a selection across word cells (tinted
   // .wsel) via elementFromPoint — document-level listeners because touch pointers are
   // implicitly captured by the origin word. Scroll gestures fire pointercancel, which
-  // aborts the selection; on touch, touch-action:pan-y reserves horizontal drags for this.
+  // lands the selection into the color popup; on touch, touch-action:pan-y reserves
+  // horizontal drags for this.
   var wordSel = null; // { s, a, originIdx, originW, curIdx, curW }
+  // pointerup (which ends a selection) fires BEFORE its trailing touchend, so the swipe
+  // handler can't rely on wordSel alone — keep blocking page turns for a short window
+  // after every selection ends too
+  var SWIPE_LOCK_AFTER_SELECTION_MS = 2000;
+  var swipeLockedUntil = 0;
+
+  function swipeLocked(){ return !!wordSel || Date.now() < swipeLockedUntil; }
 
   function wordElAtPoint(x, y){
     var hit = document.elementFromPoint(x, y);
@@ -1815,6 +1823,7 @@
     if (!wordSel) return;
     var sel = wordSel;
     wordSel = null;
+    swipeLockedUntil = Date.now() + SWIPE_LOCK_AFTER_SELECTION_MS;
     detachWordSel();
     tintWordSelection();
     if (sel.curIdx !== sel.originIdx){
@@ -1826,6 +1835,7 @@
     if (!wordSel) return;
     var sel = wordSel;
     wordSel = null;
+    swipeLockedUntil = Date.now() + SWIPE_LOCK_AFTER_SELECTION_MS;
     detachWordSel();
     tintWordSelection();
     if (sel.curIdx === sel.originIdx){ // held but never dragged — the full-ayah popup
@@ -2639,7 +2649,7 @@
     var startX = 0, startY = 0, tracking = false;
 
     el.addEventListener("touchstart", function(e){
-      if (wordSel){ tracking = false; return; } // a word-range selection owns this gesture
+      if (swipeLocked()){ tracking = false; return; } // a word selection (or its just-released trailing touch) owns this gesture
       if (e.touches.length !== 1){ tracking = false; return; } // pinch start — not a swipe
       var line = e.target.closest ? e.target.closest(".mushaf-line") : null;
       if (line && line.scrollWidth > line.clientWidth + 1){ tracking = false; return; }
@@ -2653,7 +2663,7 @@
     el.addEventListener("touchend", function(e){
       if (!tracking) return;
       tracking = false;
-      if (wordSel) return; // the hold fired mid-gesture — this drag is a selection, not a page turn
+      if (swipeLocked()) return; // the hold fired mid-gesture (or just ended) — not a page turn
       if (pageZoom > 1.001) return; // panning a zoomed page, not turning it
       var t = e.changedTouches[0];
       var dx = t.clientX - startX, dy = t.clientY - startY;
