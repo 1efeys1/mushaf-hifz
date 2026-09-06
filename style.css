@@ -854,6 +854,13 @@
      reservation as the words; the .tr-word spans carry tint + highlight */
   .ayah-translation{ touch-action:pan-y; -webkit-user-select:none; user-select:none; }
   .ayah-translation .tr-word{ -webkit-touch-callout:none; border-radius:4px; }
+  /* kemenag footnote refs in the translation — small markers, not selection targets */
+  .ayah-translation .tr-fn{
+    font-size:.7em;
+    color:var(--gold-soft);
+    vertical-align:super;
+    line-height:0;
+  }
 
   /* context line at the top of the word-range popup (which otherwise reuses .ayah-popup) */
   .whl-title{

@@ -2508,6 +2508,27 @@
   // return words in the same order, see getPageWordAyahList) so memorization testing still
   // works; the translations stay visible throughout as a study aid rather than also hiding,
   // which is the whole point of this view. Only pinch-zoom stays mushaf-only (see setViewMode).
+  // the kemenag translation carries footnote refs as <sup foot_note="…">N</sup> markup.
+  // Swap them for sentinel chars before tokenizing so they survive the word split and
+  // escaping, then render each as a small superscript after its word. Footnote markers
+  // aren't selection targets — only the .tr-word spans join an arti selection range.
+  function translationToHtml(text){
+    var ti = 0;
+    return text
+      .replace(/<sup\b[^>]*>([\s\S]*?)<\/sup>/gi, "\u0001$1\u0002")
+      .replace(/<[^>]*>/g, "") // any other stray markup — show the words, not the tags
+      .split(/\s+/).filter(Boolean)
+      .map(function(tok){
+        var fn = tok.match(/\u0001([^\u0002]*)\u0002/);
+        var clean = tok.replace(/\u0001[^\u0002]*\u0002/g, "");
+        var out = clean
+          ? '<span class="tr-word" data-t="' + (ti++) + '">' + escapeHtml(clean) + '</span>'
+          : "";
+        if (fn) out += '<sup class="tr-fn">' + escapeHtml(fn[1]) + '</sup>';
+        return out;
+      }).join(" ");
+  }
+
   function renderAyahPageContent(pageNo, blocks, skipScrollReset){
     var container = document.getElementById("mushafPage");
     var cursor = pageCursor[pageNo] || 0;
@@ -2554,10 +2575,7 @@
         html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">' + toArabicDigits(ayah) + '</span>' +
           (isSajdaAyah ? '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">سجدة</span>' : "") +
         '</div>' +
-        (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation.split(/\s+/).filter(Boolean).map(function(tok, ti){
-          // word-tokenized so the translation itself is drag-selectable for an arti-only stabilo
-          return '<span class="tr-word" data-t="' + ti + '">' + escapeHtml(tok) + '</span>';
-        }).join(" ") + '</div>' : "") +
+        (ayahTranslation ? '<div class="ayah-translation">' + translationToHtml(ayahTranslation) + '</div>' : "") +
         (getNoteText(surah, ayah) ? '<div class="ayah-note">📝 ' + escapeHtml(getNoteText(surah, ayah)) + '</div>' : "") +
         wordNotesFor(surah, ayah).map(function(wn){
           var quote = "";
