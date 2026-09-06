@@ -365,7 +365,8 @@
       }
     });
     // drag-selected word ranges ride on top of whole-ayah stabilo: "ar" recolors the
-    // arabic words, "tr" their glosses — replacing whatever the whole-ayah pass put there
+    // arabic words, "tr" their glosses. A side left null has no opinion — whatever the
+    // whole-ayah pass painted there stays (arti-only and arab-only selections coexist)
     wordHighlights.forEach(function(entry){
       var list = null; // mushaf mode resolves ayahs through the page-wide idx list
       container.querySelectorAll(".word, .wgloss, .aw-gloss").forEach(function(el){
@@ -378,8 +379,23 @@
         var w = +el.dataset.w;
         if (w < entry.w1 || w > entry.w2) return;
         var color = (el.classList.contains("wgloss") || el.classList.contains("aw-gloss")) ? entry.tr : entry.ar;
+        if (color){
+          el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
+          el.classList.add("hl-" + color);
+        }
+      });
+    });
+    // arti-only ranges over the ayah's full translation (selected by dragging the
+    // translation text itself) — ayah view only, that text doesn't exist in mushaf mode.
+    // They paint their own words, so a whole-ayah tr color still shows through around them.
+    trHighlights.forEach(function(entry){
+      var block = container.querySelector('.ayah-block[data-surah="' + entry.s + '"][data-ayah="' + entry.a + '"]');
+      if (!block) return;
+      block.querySelectorAll(".tr-word").forEach(function(el){
+        var t = +el.dataset.t;
+        if (t < entry.t1 || t > entry.t2) return;
         el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
-        if (color) el.classList.add("hl-" + color);
+        el.classList.add("hl-" + entry.c);
       });
     });
   }
@@ -1462,15 +1478,16 @@
   }
 
   // set (or clear, color=null) one side ("ar" lights the arabic words, "tr" their glosses)
-  // of a word-ordinal range. Overlapping ranges in the same ayah are absorbed, so entries
-  // never stack over the same words; an exact-range match is mutated instead of replaced
-  // so Arab and Arti can be colored independently on the same selection.
+  // of a word-ordinal range. An exact-range match is mutated so the same range can carry
+  // arab and arti colors from separate selections; on partial overlap only the incoming
+  // side is taken over — the other side was selected independently and survives untouched.
   function setWordHighlight(surah, ayah, w1, w2, target, color){
     var exact = null;
     wordHighlights = wordHighlights.filter(function(e){
       if (e.s !== surah || e.a !== ayah || e.w1 > w2 || e.w2 < w1) return true;
       if (e.w1 === w1 && e.w2 === w2){ exact = e; return true; }
-      return false; // partial overlap — absorbed by the incoming range
+      e[target] = null; // partially overlapped on this side — the new range takes it over
+      return !!(e.ar || e.tr); // fully-cleaned entries don't linger
     });
     if (color && !exact){
       exact = { s: surah, a: ayah, w1: w1, w2: w2, ar: null, tr: null };
@@ -1484,6 +1501,59 @@
     }
     wordHighlights.sort(function(x, y){ return x.s - y.s || x.a - y.a || x.w1 - y.w1; });
     saveWordHighlights();
+    applyAyahDecorations();
+  }
+
+  // ---------------- arti-only highlights over the full-ayah translation ----------------
+  var TR_HL_KEY = "mushafHifzTrHighlights"; // [{s, a, t1, t2, c}] — t = word index within the ayah's translation text
+
+  function loadTrHighlights(){
+    try{
+      var arr = JSON.parse(localStorage.getItem(TR_HL_KEY) || "[]");
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function(e){
+        return e && Number.isInteger(e.s) && e.s >= 1 && e.s <= 114 &&
+          Number.isInteger(e.a) && e.a >= 1 && e.a <= 286 &&
+          Number.isInteger(e.t1) && Number.isInteger(e.t2) && e.t1 >= 0 && e.t1 <= e.t2 &&
+          Number.isInteger(e.c) && e.c >= 1 && e.c <= HIGHLIGHT_COLORS;
+      });
+    } catch(e){
+      return [];
+    }
+  }
+
+  var trHighlights = loadTrHighlights();
+
+  function saveTrHighlights(){
+    try{ localStorage.setItem(TR_HL_KEY, JSON.stringify(trHighlights)); } catch(e){ /* storage unavailable — just won't persist */ }
+  }
+
+  function exactTrEntry(r){
+    for (var i = 0; i < trHighlights.length; i++){
+      var e = trHighlights[i];
+      if (e.s === r.s && e.a === r.a && e.t1 === r.t1 && e.t2 === r.t2) return e;
+    }
+    return null;
+  }
+
+  // set (or clear, color=null) the stabilo over a word range of the ayah's translation.
+  // One color per range (the text is all "arti" — no per-side split); partial overlaps
+  // are replaced by the incoming range, like same-side word ranges.
+  function setTrHighlight(surah, ayah, t1, t2, color){
+    var exact = null;
+    trHighlights = trHighlights.filter(function(e){
+      if (e.s !== surah || e.a !== ayah || e.t1 > t2 || e.t2 < t1) return true;
+      if (e.t1 === t1 && e.t2 === t2){ exact = e; return true; }
+      return false; // partial overlap — absorbed by the incoming range
+    });
+    if (color && !exact){
+      exact = { s: surah, a: ayah, t1: t1, t2: t2, c: color };
+      trHighlights.push(exact);
+    }
+    if (exact) exact.c = color;
+    if (exact && !exact.c) trHighlights = trHighlights.filter(function(e){ return e !== exact; });
+    trHighlights.sort(function(x, y){ return x.s - y.s || x.a - y.a || x.t1 - y.t1; });
+    saveTrHighlights();
     applyAyahDecorations();
   }
 
@@ -1670,6 +1740,7 @@
   function wireLongPressAyahActions(el, fixedAyahPair){
     var timer = null;
     var startX = 0, startY = 0;
+    var pressTarget = null;
 
     function cancel(){
       clearTimeout(timer);
@@ -1680,6 +1751,7 @@
       if (e.pointerType === "mouse" && e.button !== 0) return;
       startX = e.clientX;
       startY = e.clientY;
+      pressTarget = e.target;
       cancel();
       timer = setTimeout(function(){
         timer = null;
@@ -1687,9 +1759,20 @@
         var idxEl = el.dataset.idx !== undefined ? el : el.querySelector("[data-idx]");
         var ayahPair = fixedAyahPair || (idxEl && getPageWordAyahList(currentPage)[+idxEl.dataset.idx]);
         if (!ayahPair) return;
-        var wordEl = el.classList.contains("word") ? el : el.querySelector(".word");
-        if (wordEl) beginWordSelection(wordEl, ayahPair, startX, startY);
-        else showAyahPopup(startX, startY, ayahPair[0], ayahPair[1]); // e.g. translation block — nothing to drag
+        // where the finger landed picks the selection: a word cell (arabic or its gloss —
+        // same word) starts an arabic word-range selection; a translation word starts an
+        // arti-only range over the full-ayah translation itself. Long-press without drag
+        // still opens the full-ayah popup (arab + arti together) either way.
+        var pt = pressTarget;
+        var trWord = pt && pt.closest ? pt.closest(".tr-word") : null;
+        var wordEl = (pt && pt.closest ? pt.closest(".word") : null);
+        if (!wordEl){
+          var cell = pt && pt.closest ? pt.closest(".word-cell, .ayah-word") : null;
+          wordEl = cell ? cell.querySelector(".word") : (el.classList.contains("word") ? el : el.querySelector(".word"));
+        }
+        if (trWord) beginTrSelection(trWord, ayahPair, startX, startY);
+        else if (wordEl) beginWordSelection(wordEl, ayahPair, startX, startY);
+        else showAyahPopup(startX, startY, ayahPair[0], ayahPair[1]); // e.g. gaps — nothing to drag
       }, LONG_PRESS_MS);
     });
     el.addEventListener("pointermove", function(e){
@@ -1707,7 +1790,7 @@
   // implicitly captured by the origin word. Scroll gestures fire pointercancel, which
   // lands the selection into the color popup; on touch, touch-action:pan-y reserves
   // horizontal drags for this.
-  var wordSel = null; // { s, a, originIdx, originW, curIdx, curW }
+  var wordSel = null; // word: { kind:"word", s, a, originIdx, originW, curIdx, curW, … } · tr: { kind:"tr", s, a, blockEl, origin, cur, … }
   // pointerup (which ends a selection) fires BEFORE its trailing touchend, so the swipe
   // handler can't rely on wordSel alone — keep blocking page turns for a short window
   // after every selection ends too
@@ -1726,6 +1809,11 @@
     return w.classList.contains("word") ? w : null;
   }
 
+  function trWordAtPoint(x, y){
+    var hit = document.elementFromPoint(x, y);
+    return hit && hit.closest ? hit.closest(".tr-word") : null;
+  }
+
   function wordSelAyahOf(el){
     var block = el.closest(".ayah-block");
     if (block) return [+block.dataset.surah, +block.dataset.ayah];
@@ -1736,42 +1824,55 @@
     var container = document.getElementById("mushafPage");
     container.querySelectorAll(".wsel").forEach(function(el){ el.classList.remove("wsel"); });
     if (!wordSel) return;
-    var lo = Math.min(wordSel.originIdx, wordSel.curIdx);
-    var hi = Math.max(wordSel.originIdx, wordSel.curIdx);
-    var blocks = container.querySelectorAll(".ayah-block");
-    if (blocks.length){ // ayah view: tint whole word cells (arabic + gloss together)
-      blocks.forEach(function(block){
-        if (+block.dataset.surah !== wordSel.s || +block.dataset.ayah !== wordSel.a) return;
-        block.querySelectorAll(".ayah-word").forEach(function(w){
-          var inner = w.querySelector(".word");
-          if (inner){
-            var idx = +inner.dataset.idx;
-            if (idx >= lo && idx <= hi) w.classList.add("wsel");
-          }
-        });
+    if (wordSel.kind === "tr"){ // arti selection — a word range of the ayah's translation
+      var tlo = Math.min(wordSel.origin, wordSel.cur);
+      var thi = Math.max(wordSel.origin, wordSel.cur);
+      wordSel.blockEl.querySelectorAll(".tr-word").forEach(function(el){
+        var t = +el.dataset.t;
+        if (t >= tlo && t <= thi) el.classList.add("wsel");
       });
       return;
     }
-    var list = getPageWordAyahList(currentPage); // mushaf view
-    container.querySelectorAll(".word, .wgloss").forEach(function(el){
+    // arabic selection — only the arabic spans tint, never the glosses under them
+    var lo = Math.min(wordSel.originIdx, wordSel.curIdx);
+    var hi = Math.max(wordSel.originIdx, wordSel.curIdx);
+    var list = null; // mushaf mode resolves ayahs through the page-wide idx list
+    container.querySelectorAll(".word").forEach(function(el){
       var idx = +el.dataset.idx;
       if (idx < lo || idx > hi) return;
-      var pair = list[idx];
+      var block = el.closest(".ayah-block");
+      var pair = block ? [+block.dataset.surah, +block.dataset.ayah]
+        : (list || (list = getPageWordAyahList(currentPage)))[idx];
       if (pair && pair[0] === wordSel.s && pair[1] === wordSel.a) el.classList.add("wsel");
     });
   }
 
+  function attachWordSelListeners(){
+    document.addEventListener("pointermove", wordSelMove);
+    document.addEventListener("pointerup", wordSelEnd);
+    document.addEventListener("pointercancel", wordSelCancel);
+  }
+
   function beginWordSelection(wordEl, ayahPair, startX, startY){
     wordSel = {
-      s: ayahPair[0], a: ayahPair[1],
+      kind: "word", s: ayahPair[0], a: ayahPair[1],
       originIdx: +wordEl.dataset.idx, originW: +wordEl.dataset.w,
       curIdx: +wordEl.dataset.idx, curW: +wordEl.dataset.w,
       lastX: startX, lastY: startY, anchorX: startX
     };
     tintWordSelection();
-    document.addEventListener("pointermove", wordSelMove);
-    document.addEventListener("pointerup", wordSelEnd);
-    document.addEventListener("pointercancel", wordSelCancel);
+    attachWordSelListeners();
+  }
+
+  // arti selection over the ayah's full translation ("t" = word index within that text)
+  function beginTrSelection(trWordEl, ayahPair, startX, startY){
+    wordSel = {
+      kind: "tr", s: ayahPair[0], a: ayahPair[1], blockEl: trWordEl.closest(".ayah-block"),
+      origin: +trWordEl.dataset.t, cur: +trWordEl.dataset.t,
+      lastX: startX, lastY: startY, anchorX: startX
+    };
+    tintWordSelection();
+    attachWordSelListeners();
   }
 
   function detachWordSel(){
@@ -1784,6 +1885,30 @@
     if (!wordSel) return;
     wordSel.lastX = e.clientX;
     wordSel.lastY = e.clientY;
+    if (wordSel.kind === "tr"){
+      var tw = trWordAtPoint(e.clientX, e.clientY);
+      if (tw && tw.closest(".ayah-block") === wordSel.blockEl){
+        if (+tw.dataset.t !== wordSel.cur){
+          wordSel.cur = +tw.dataset.t;
+          tintWordSelection();
+        }
+        wordSel.anchorX = e.clientX;
+        return;
+      }
+      // the finger left the words — extend by drag DIRECTION like the arabic fallback
+      // below, but the translation reads LTR: rightward eats words in order, leftward
+      // gives them back. One word per next-cell-width of travel.
+      var tdx = e.clientX - wordSel.anchorX;
+      if (!tdx) return;
+      var tNext = wordSel.cur + (tdx > 0 ? 1 : -1);
+      var tCell = wordSel.blockEl.querySelector('.tr-word[data-t="' + tNext + '"]');
+      if (!tCell) return;
+      if (Math.abs(tdx) < Math.max(12, tCell.getBoundingClientRect().width)) return;
+      wordSel.cur = tNext;
+      wordSel.anchorX = e.clientX; // consumed by this word
+      tintWordSelection();
+      return;
+    }
     var w = wordElAtPoint(e.clientX, e.clientY);
     if (w){
       var pair = wordSelAyahOf(w);
@@ -1826,8 +1951,14 @@
     swipeLockedUntil = Date.now() + SWIPE_LOCK_AFTER_SELECTION_MS;
     detachWordSel();
     tintWordSelection();
+    if (sel.kind === "tr"){
+      if (sel.cur !== sel.origin){
+        showWordPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.origin, sel.cur), Math.max(sel.origin, sel.cur), "tr");
+      }
+      return;
+    }
     if (sel.curIdx !== sel.originIdx){
-      showWordPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
+      showWordPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW), "word");
     }
   }
 
@@ -1838,17 +1969,22 @@
     swipeLockedUntil = Date.now() + SWIPE_LOCK_AFTER_SELECTION_MS;
     detachWordSel();
     tintWordSelection();
+    if (sel.kind === "tr"){
+      if (sel.cur !== sel.origin) showWordPopup(e.clientX, e.clientY, sel.s, sel.a, Math.min(sel.origin, sel.cur), Math.max(sel.origin, sel.cur), "tr");
+      else showAyahPopup(e.clientX, e.clientY, sel.s, sel.a); // held but never dragged
+      return;
+    }
     if (sel.curIdx === sel.originIdx){ // held but never dragged — the full-ayah popup
       showAyahPopup(e.clientX, e.clientY, sel.s, sel.a);
       return;
     }
-    showWordPopup(e.clientX, e.clientY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW));
+    showWordPopup(e.clientX, e.clientY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW), "word");
   }
 
-  // ---------------- word-range popup (shown on selection release) ----------------
-  // Same rows/chrome as the whole-ayah popup, but the swatches color the SELECTED words
-  // ("ar" = the arabic words, "tr" = their glosses) and the note button writes a note
-  // attached to that word range.
+  // ---------------- selection popup (shown when a drag-selection releases) ----------------
+  // Same chrome as the whole-ayah popup, but only the dragged text's row is shown —
+  // "word" selections color the arabic words, "tr" selections a word range of the
+  // ayah's full translation — and the note button writes a word-range note (arabic only).
   var wordPopupEl = null;
 
   function exactWordEntry(r){
@@ -1862,11 +1998,15 @@
   function syncWordPopupState(){
     if (!wordPopupEl || !wordPopupEl.__range) return;
     var r = wordPopupEl.__range;
-    var e = exactWordEntry(r);
-    syncHlRows(wordPopupEl, function(target){ return e ? e[target] : null; });
+    var e = r.tr ? null : exactWordEntry(r);
+    var te = r.tr ? exactTrEntry(r) : null;
+    syncHlRows(wordPopupEl, function(target){
+      if (r.tr) return target === "tr" ? (te ? te.c : null) : null;
+      return e ? e[target] : null;
+    });
     wordPopupEl.querySelector(".ap-bm").textContent =
       isBookmarked(r.s, r.a) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
-    wordPopupEl.querySelector(".ap-note").textContent =
+    if (!r.tr) wordPopupEl.querySelector(".ap-note").textContent =
       getWordNoteText(r.s, r.a, r.w1, r.w2) ? "📝 Edit catatan kata ini" : "📝 Catat kata terpilih";
   }
 
@@ -1890,14 +2030,20 @@
     note.addEventListener("click", function(){
       var r = wordPopupEl.__range;
       hideWordPopup();
-      if (r) showNoteSheet(r.s, r.a, { w1: r.w1, w2: r.w2 });
+      if (r && !r.tr) showNoteSheet(r.s, r.a, { w1: r.w1, w2: r.w2 });
     });
     function pickSide(target){
       return function(color){
         var r = wordPopupEl.__range;
         if (!r) return;
-        var e = exactWordEntry(r);
-        setWordHighlight(r.s, r.a, r.w1, r.w2, target, color !== null && e && e[target] === color ? null : color);
+        if (r.tr){ // arti selection — a single color over the translation range
+          if (target !== "tr") return;
+          var te = exactTrEntry(r);
+          setTrHighlight(r.s, r.a, r.t1, r.t2, color !== null && te && te.c === color ? null : color);
+        } else {
+          var e = exactWordEntry(r);
+          setWordHighlight(r.s, r.a, r.w1, r.w2, target, color !== null && e && e[target] === color ? null : color);
+        }
         syncWordPopupState();
       };
     }
@@ -1918,11 +2064,19 @@
     if (wordPopupEl) wordPopupEl.classList.remove("open");
   }
 
-  function showWordPopup(x, y, surah, ayah, w1, w2){
+  function showWordPopup(x, y, surah, ayah, r1, r2, kind){
+    kind = kind || "word";
     var popup = ensureWordPopup();
-    popup.__range = { s: surah, a: ayah, w1: w1, w2: w2 };
+    popup.__range = kind === "tr"
+      ? { s: surah, a: ayah, t1: r1, t2: r2, tr: true }
+      : { s: surah, a: ayah, w1: r1, w2: r2 };
+    // arabic and arti are selected from their own text, so the popup offers only the row
+    // for what was dragged; word-range notes exist for arabic selections only
+    popup.querySelector('.ap-hl-row[data-hl-target="ar"]').style.display = kind === "word" ? "" : "none";
+    popup.querySelector('.ap-hl-row[data-hl-target="tr"]').style.display = kind === "tr" ? "" : "none";
+    popup.querySelector(".ap-note").style.display = kind === "word" ? "" : "none";
     popup.querySelector(".whl-title").textContent =
-      (w2 - w1 + 1) + " kata terpilih · " + SURAH_META[surah - 1][2] + " " + surah + ":" + ayah;
+      (r2 - r1 + 1) + " kata " + (kind === "tr" ? "arti" : "Arab") + " terpilih · " + SURAH_META[surah - 1][2] + " " + surah + ":" + ayah;
     syncWordPopupState();
     popup.classList.add("open");
     popup.style.left = "0px";
@@ -2400,7 +2554,10 @@
         html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">' + toArabicDigits(ayah) + '</span>' +
           (isSajdaAyah ? '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">سجدة</span>' : "") +
         '</div>' +
-        (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation + '</div>' : "") +
+        (ayahTranslation ? '<div class="ayah-translation">' + ayahTranslation.split(/\s+/).filter(Boolean).map(function(tok, ti){
+          // word-tokenized so the translation itself is drag-selectable for an arti-only stabilo
+          return '<span class="tr-word" data-t="' + ti + '">' + escapeHtml(tok) + '</span>';
+        }).join(" ") + '</div>' : "") +
         (getNoteText(surah, ayah) ? '<div class="ayah-note">📝 ' + escapeHtml(getNoteText(surah, ayah)) + '</div>' : "") +
         wordNotesFor(surah, ayah).map(function(wn){
           var quote = "";

@@ -847,8 +847,13 @@
   /* drag-selection: reserve horizontal drags for the word-range stabilo gesture while
      vertical panning keeps scrolling the page (checked at gesture start, so this must
      live on the elements themselves, not toggled mid-gesture) */
-  .word, .wgloss, .ayah-word{ touch-action:pan-y; }
-  .word.wsel, .wgloss.wsel, .ayah-word.wsel{ background:#C9A64B73; border-radius:4px; }
+  .word, .wgloss, .aw-gloss, .ayah-word{ touch-action:pan-y; }
+  /* tints land on the dragged text's spans only — arabic words, or translation words */
+  .word.wsel, .wgloss.wsel, .aw-gloss.wsel, .tr-word.wsel{ background:#C9A64B73; border-radius:4px; }
+  /* the full-ayah translation is drag-selectable for an arti-only stabilo — same gesture
+     reservation as the words; the .tr-word spans carry tint + highlight */
+  .ayah-translation{ touch-action:pan-y; -webkit-user-select:none; user-select:none; }
+  .ayah-translation .tr-word{ -webkit-touch-callout:none; border-radius:4px; }
 
   /* context line at the top of the word-range popup (which otherwise reuses .ayah-popup) */
   .whl-title{
