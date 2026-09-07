@@ -14,10 +14,11 @@
   // Bump this if the requested edition/fields ever change again — old cache entries under a
   // different prefix are simply ignored (and age out via each browser's own storage limits),
   // instead of serving whatever edition happened to be cached under the same key before.
-  // Single namespace now: both view modes read this same translated response (the mushaf
-  // layout needs word.translation for its optional per-word glosses, and sharing means
-  // switching view modes never refetches).
-  var CACHE_PREFIX = "mushafHifzTranslatedPageCache:v2:";
+  // v3: entries written before the neighbor-merge fix below are missing recovered verses on
+  // ~30 pages and must not be served. Single namespace now: both view modes read this same
+  // translated response (the mushaf layout needs word.translation for its optional per-word
+  // glosses, and sharing means switching view modes never refetches).
+  var CACHE_PREFIX = "mushafHifzTranslatedPageCache:v3:";
   // The API provider's terms cap how long responses may be cached — 7 days.
   var CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
   var API_BASE = "https://api.quran.com/api/v4/verses/by_page/";
@@ -81,36 +82,57 @@
     });
   }
 
-  // `verses/by_page/<N>` occasionally drops a verse that legitimately belongs on page N (all
-  // its words are tagged page_number===N) — confirmed for real on page 564 (Al-Qalam 68:16):
-  // absent from by_page/564's own verse list, but present in by_page/565's, with its words
-  // still correctly tagged page_number:564. A dataset-wide scan found this isn't a one-off, and
-  // nothing about it is specific to which fields were requested, so both the plain and
-  // translated fetches below share this fix. Fetching page N+1 alongside page N and pulling in
-  // any such orphaned verse recovers it — cheap since it only costs an extra request on a
-  // first, uncached load (both fire in parallel), and the lookahead page also gets its own
-  // cache entry, priming the very page a user is most likely to open next.
-  function fetchPageWithLookahead(pageNo, fetchRawFn, cachePrefix){
+  // `verses/by_page/<N>`'s verse list is out of sync with its own words' page tags in two
+  // mirrored ways (same root cause: the verse→page index and the per-word page_number tags
+  // are separate datasets that occasionally disagree). Forward (confirmed on page 564,
+  // Al-Qalam 68:16): the verse is absent from by_page/N's own list but present in
+  // by_page/N+1's, its words still correctly tagged page_number:N. Backward (confirmed on
+  // pages 596→597, Ash-Sharh 94:3-8 — surfaced as "surah 94 only shows 2 ayat"): the verse
+  // IS listed under by_page/N, but all its words are tagged page_number:N+1 and by_page/N+1's
+  // list doesn't contain it — page N filters its words out and page N+1 never receives the
+  // verse object, so those ayat render nowhere, in either view mode. A one-time sweep of all
+  // 604 pages with these exact fetch params found 13 forward and 43 backward cases, every
+  // one recoverable from a neighbor page's list. So a page load fetches BOTH neighbors in
+  // parallel and pulls in any listed-elsewhere verse whose words belong to the page being
+  // loaded — cheap since it only costs extra requests on a first, uncached load, and a
+  // failed neighbor must never break the page actually being loaded.
+  function verseReadingOrder(a, b){
+    var ac = a.verse_key.indexOf(":"), bc = b.verse_key.indexOf(":");
+    var as = +a.verse_key.slice(0, ac), bs = +b.verse_key.slice(0, bc);
+    if (as !== bs) return as - bs;
+    return (+a.verse_key.slice(ac + 1)) - (+b.verse_key.slice(bc + 1));
+  }
+
+  function fetchPageWithNeighbors(pageNo, fetchRawFn){
     var mainPromise = fetchRawFn(pageNo);
-    if (pageNo >= TOTAL_PAGES) return mainPromise;
+    var neighborPages = [];
+    if (pageNo > 1) neighborPages.push(pageNo - 1);
+    if (pageNo < TOTAL_PAGES) neighborPages.push(pageNo + 1);
+    var neighborPromises = neighborPages.map(function(n){
+      return fetchRawFn(n).catch(function(){ return null; });
+    });
 
-    var lookaheadPromise = fetchRawFn(pageNo + 1).then(function(verses){
-      //if (!readCache(cachePrefix, pageNo + 1)) writeCache(cachePrefix, pageNo + 1, verses); // do not cache lookahead
-      return verses;
-    }).catch(function(){ return null; }); // a failed lookahead shouldn't break the page actually being loaded
-
-    return Promise.all([mainPromise, lookaheadPromise]).then(function(results){
+    return Promise.all([mainPromise].concat(neighborPromises)).then(function(results){
       var verses = results[0];
-      var nextVerses = results[1];
-      if (!nextVerses) return verses;
       var seenKeys = Object.create(null);
       verses.forEach(function(v){ seenKeys[v.verse_key] = true; });
       var merged = verses.slice();
-      nextVerses.forEach(function(v){
-        if (seenKeys[v.verse_key]) return;
-        var belongsToThisPage = v.words.some(function(w){ return w.page_number === pageNo; });
-        if (belongsToThisPage) merged.push(v);
-      });
+      for (var i = 1; i < results.length; i++){
+        var neighborVerses = results[i];
+        if (!neighborVerses) continue;
+        neighborVerses.forEach(function(v){
+          if (seenKeys[v.verse_key]) return;
+          if (v.words.some(function(w){ return w.page_number === pageNo; })){
+            merged.push(v);
+            seenKeys[v.verse_key] = true;
+          }
+        });
+      }
+      // The renderer lays lines/blocks out in list order, so a verse merged in at the end
+      // must be re-sorted into reading order or it renders as a stray line/block at the
+      // page bottom. by_page's own lists already come in reading order; sorting is a no-op
+      // for them (and skipped entirely when nothing was merged).
+      if (merged.length !== verses.length) merged.sort(verseReadingOrder);
       return merged;
     });
   }
@@ -129,7 +151,7 @@
         var cached = readCache(prefix, pageNo);
         if (cached) return Promise.resolve(cached);
       }
-      return fetchPageWithLookahead(pageNo, fetchRawVerses, prefix).then(function(verses){
+      return fetchPageWithNeighbors(pageNo, fetchRawVerses).then(function(verses){
         writeCache(prefix, pageNo, verses);
         return verses;
       });

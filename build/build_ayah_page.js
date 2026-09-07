@@ -4,6 +4,12 @@
 // pages the user has already visited. One build-time sweep of all 604 pages gives the full
 // 6236-entry mapping (~20KB), same spirit as build_surah_meta.py's static metadata.
 //
+// The page is taken from each ayah's FIRST WORD's page_number tag, not from which by_page
+// response lists the verse: the endpoint's verse-level index disagrees with its own word
+// tags for ~56 ayat (see quran-api.js's neighbor-merge comment) — e.g. Ash-Sharh 94:3-8 is
+// listed under page 596 while its words sit on page 597. The runtime renders by word tags,
+// so the word-level value is the page the ayah actually appears on.
+//
 // Requires internet and bun (or node 18+), no other dependencies. Only re-run if the
 // page layout ever changes (the runtime pins the 16-line Madani edition via mushaf=2 /
 // code_v2 — see quran-api.js — so this table must be generated with the same params).
@@ -44,7 +50,7 @@ async function main() {
 
   for (let page = 1; page <= TOTAL_PAGES; page++) {
     const url = `https://api.quran.com/api/v4/verses/by_page/${page}` +
-      `?fields=verse_key&mushaf=2&per_page=all`;
+      `?words=true&word_fields=position,code_v2&fields=verse_key&mushaf=2&per_page=all`;
     const data = await fetchJson(url);
     const verses = data && data.verses;
     if (!Array.isArray(verses) || !verses.length) throw new Error(`page ${page} returned no verses`);
@@ -54,7 +60,9 @@ async function main() {
       const s = +m[1], a = +m[2];
       const row = table[s - 1];
       if (!row || a > row.length) throw new Error(`verse ${v.verse_key} exceeds SURAH_META bounds`);
-      row[a - 1] = page;
+      if (row[a - 1]) continue; // each verse is listed exactly once across all 604 responses
+      if (!v.words || !v.words.length) throw new Error(`verse ${v.verse_key} has no words to locate`);
+      row[a - 1] = v.words[0].page_number; // first word's page = where the ayah starts rendering
       filled++;
     }
     if (page % 50 === 0) console.log(`  …page ${page}/604`);
