@@ -1127,6 +1127,7 @@
   .reveal-controls button:hover{ background:var(--veil); }
   .reveal-controls button.step{
     font-weight:700;
+    font-size:14px;
     padding:9px 18px;
     border-width:2px;
   }
