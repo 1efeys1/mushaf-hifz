@@ -1366,7 +1366,7 @@
     .edge-fab:hover{ border-color:var(--gold-soft); }
 
     /* phone landscape is swipe territory too — page-nav stays hidden */
-    #prevPage, #nextPage{ display:none; }
+    /* #prevPage, #nextPage{ display:none; } */
 
     /* the audio bar is a compact bottom-right block here, flush to the edge like the
        reveal rail above it and inside the same 96px band main.reader already keeps
