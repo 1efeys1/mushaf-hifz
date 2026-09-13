@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mushaf Hifz - Settings Sync</title>
+    <style>
+        /* Gaya sederhana untuk simulasi pengaturan */
+        body { font-family: sans-serif; padding: 20px; transition: background 0.3s, color 0.3s; }
+        .dark-mode { background-color: #121212; color: #ffffff; }
+        .card { border: 1px solid #ccc; padding: 15px; border-radius: 8px; max-width: 400px; margin-top: 15px; }
+        .btn { padding: 8px 12px; cursor: pointer; margin-right: 5px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <h2>Pengaturan Mushaf Hifz</h2>
+
+    <!-- Area Login (Contoh Otentikasi) -->
+    <div id="auth-section">
+        <p id="user-info">Memuat status login...</p>
+        <button id="btn-login" class="btn hidden">Login dengan Google</button>
+        <button id="btn-logout" class="btn hidden">Logout</button>
+    </div>
+
+    <!-- Area Konten Pengaturan -->
+    <div id="settings-section" class="card hidden">
+        <h3>Preferensi Anda</h3>
+        <label>
+            <input type="checkbox" id="chk-dark-mode"> Aktifkan Mode Gelap
+        </label>
+        <br><br>
+        <label>Ukuran Font: </label>
+        <select id="sel-font-size">
+            <option value="16px">Kecil (16px)</option>
+            <option value="20px">Sedang (20px)</option>
+            <option value="24px">Besar (24px)</option>
+        </select>
+        <p><small id="sync-status">Status: Lokal</small></p>
+    </div>
+
+    <!-- 1. MEMUAT FIREBASE SDK VIA CDN (Modular/ES Modules) -->
+    <script type="module" src="./sinkron.js"></script>
+</body>
+</html>
