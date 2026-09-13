@@ -2540,6 +2540,12 @@
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
     }
+
+    let allrev = container.querySelectorAll(".word.revealed"); 
+    if (allrev.length > 0) {
+      let lastel = allrev[allrev.length - 1];
+      lastel.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
     afterPageRender(); // after the scroll reset, so centering on the playing ayah wins
   }
 
