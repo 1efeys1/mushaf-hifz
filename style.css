@@ -1313,7 +1313,7 @@
     .btn-label{ display:none; }
     /* page-nav buttons stay desktop-only — on touch layouts pages turn by swiping
        (issue #12), and the footer row needs the space */
-    #prevPage, #nextPage{ display:none; }
+    /* #prevPage, #nextPage{ display:none; } */
     button.chip{ padding:7px 11px; }
 
     .pj-label{ display:none; }
