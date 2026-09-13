@@ -1114,25 +1114,33 @@
     }
   }
   .reveal-controls button{
+    width:42px;
+    height:42px;
+    padding:0;
+    border-radius:50%;
     background:#fffef9;
     border:1px solid var(--gold);
     color:var(--green-deep);
-    padding:8px 14px;
-    border-radius:999px;
     font-size:12.5px;
     cursor:pointer;
     white-space:nowrap;
     flex-shrink:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
   }
   .reveal-controls button:hover{ background:var(--veil); }
   .reveal-controls button.step{
-    font-weight:700;
-    font-size:14px;
-    padding:9px 18px;
+    width:54px;
+    height:54px;
+    font-size:30px;
     border-width:2px;
+    line-height:1;
+    padding-right: 14px;
   }
   .reveal-controls button.minor{
-    padding:8px 11px;
+    width:34px;
+    height:34px;
     font-size:14px;
     color:var(--ink-soft);
   }
@@ -1327,7 +1335,7 @@
 
     .reveal-controls{ gap:6px; padding:8px; }
     .reveal-controls button{ padding:8px 10px; font-size:11.5px; }
-    .reveal-controls button.step{ padding:8px 14px; }
+    /* .reveal-controls button.step{ padding:8px 14px; } */
     .reveal-controls button.minor{ padding:8px; font-size:13px; }
   }
 
@@ -1372,11 +1380,15 @@
        reveal rail above it and inside the same 96px band main.reader already keeps
        clear of content — the reciter label wraps onto two lines to fit (user-ok'd) */
     .audio-bar{
-      left:auto; right:0; bottom:8px;
-      transform:none;
+      position:fixed;
+      right:0;
+      bottom:0;
+      left:auto;
       width:96px;
       border:1px solid #0a1610;
-      border-radius:10px 0 0 10px;
+      border-radius:10px 10px 0 0;
+      z-index:15;
+      transform:none;
     }
     .audio-bar-head{
       padding:6px 6px;
@@ -1388,11 +1400,10 @@
     .audio-panel{
       position:absolute;
       bottom:100%;
-      /* shifted fully clear of the right-side chrome (reveal rail + edge fabs live in
-         the 96px edge band) — it floats up over the reading area instead, edge + 8px gap */
-      left:auto; right:104px;
+      left:auto;
+      right:0;
       transform:none;
-      width:min(320px, calc(100vw - 120px));
+      width:min(320px, calc(100vw - 140px));
       margin-bottom:8px;
       border:1px solid #0a1610;
       border-radius:10px;
@@ -1424,23 +1435,44 @@
     }
 
     .reveal-controls{
-      position:fixed; right:0; z-index:14;
-      /* vertically centered column (user request) — top:50% + translateY instead of the old
-         bottom:0 pin; the base rule pins left:0 right:0 (a full-width footer bar), and left
-         must stay unset or the "column" stretches across the whole viewport again. Fixed
-         96px width matches main.reader's margin-right above. */
-      top:50%;
-      transform:translateY(-50%);
+      position:fixed;
+      right:0;
+      top:0;
       left:auto;
+      z-index:13;
       width:96px;
-      flex-direction:column; flex-wrap:nowrap;
-      justify-content:flex-end; align-items:stretch;
-      padding:6px; gap:4px;
+      display:flex;
+      flex-direction:column;
+      flex-wrap:nowrap;
+      justify-content:center;
+      align-items:center;
+      padding:6px;
+      gap:8px;
       border:1px solid #0a1610;
       border-radius:10px 0 0 10px;
       background:linear-gradient(180deg,#173626,#122a1d);
+      box-sizing:border-box;
     }
-    .reveal-controls button{ padding:6px 10px; font-size:11.5px; }
-    .reveal-controls button.step{ padding:6px 10px; }
-    .reveal-controls button.minor{ padding:6px; font-size:13px; }
+    .reveal-controls button{
+      width:36px;
+      height:36px;
+      padding:0;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:11.5px;
+      margin:0 auto;
+    }
+    .reveal-controls button.step{
+      width:40px;
+      height:40px;
+      font-size:20px;
+      padding-right: 4px;
+    }
+    .reveal-controls button.minor{
+      width:32px;
+      height:32px;
+      font-size:11px;
+    }
   }
