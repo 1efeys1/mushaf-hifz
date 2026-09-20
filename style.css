@@ -1144,6 +1144,21 @@
     font-size:14px;
     color:var(--ink-soft);
   }
+  .reveal-controls button.step.minor{
+    flex-grow: 1;
+    flex-shrink: 1;
+    border-radius: 0.5rem;
+    background:#fffef909;
+    border: solid 1px var(--green-mid);
+  }
+  @media (max-width:350px){
+    #spaceBtnL, #spaceBtnR {
+      display: none;
+    }
+  }
+  .reveal-controls button#backspaceBtn.minor {
+    transform: scaleX(-1);
+  }
 
   /* ---------- long-press ayah actions popup (markah / stabilo / catatan) ---------- */
   .ayah-popup{
@@ -1374,7 +1389,7 @@
     .edge-fab:hover{ border-color:var(--gold-soft); }
 
     /* phone landscape is swipe territory too — page-nav stays hidden */
-    #prevPage, #nextPage{ display:none; }
+    #prevPage, #nextPage, #spaceBtnL, #spaceBtnR { display:none; }
 
     /* the audio bar is a compact bottom-right block here, flush to the edge like the
        reveal rail above it and inside the same 96px band main.reader already keeps
