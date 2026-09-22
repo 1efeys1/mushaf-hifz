@@ -2161,6 +2161,7 @@
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
+        '<button id="spaceBtnL" class="step minor" title="Lanjut">◀</button>' +
         '<button id="nextPage" class="minor" title="Hal. Berikutnya">‹«</button>' +
         '<button id="revealAll" class="minor" title="Tampilkan semua">📖</button>' +
         '<button id="ayahBtn" class="minor" title="Lanjut 1 Ayat">(١) ⏮</button>' +
@@ -2168,6 +2169,7 @@
         '<button id="backspaceBtn" class="minor" title="Ulangi">⌫</button>' +
         '<button id="hideAll" class="minor" title="Ulang Semua">↺</button>' +
         '<button id="prevPage" class="minor" title="Hal. Sebelumnya">»›</button>' +
+        '<button id="spaceBtnR" class="step minor" title="Lanjut">◀</button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
@@ -2183,45 +2185,6 @@
       renderPage(currentPage, true);
     });
     document.getElementById("spaceBtn").addEventListener("click", function(){ moveCursor(1); });
-    document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });
-    document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
-    document.getElementById("prevPage").addEventListener("click", function(){ goToPage(currentPage - 1); });
-    document.getElementById("nextPage").addEventListener("click", function(){ goToPage(currentPage + 1); });
-
-    syncFixedBarOffsets();
-  }
-
-  function buildReaderShellTablet(){
-    // .reveal-controls is a sibling of .reader-scroll (position:fixed, see style.css) so it
-    // stays put while .reader-scroll scrolls/zooms/pans underneath it. All other controls
-    // (view mode, content toggles, sizes, hint words) live in the right settings panel.
-    reader.innerHTML =
-      '<div class="reader-scroll" id="readerScroll">' +
-        '<div class="mushaf-page" id="mushafPage"></div>' +
-      '</div>' +
-      '<div class="reveal-controls">' +
-        '<button id="spaceBtnL" class="step" title="Lanjut">Lanjut</button>' +
-        '<button id="nextPage" class="minor" title="Hal. Berikutnya">‹«</button>' +
-        '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
-        '<button id="ayahBtn" class="minor" title="Lanjut 1 Ayat">(١) ⏮</button>' +
-        '<button id="backspaceBtn" class="minor" title="Ulangi">⌫</button>' +
-        '<button id="hideAll" class="minor" title="Ulang Semua">↺</button>' +
-        '<button id="prevPage" class="minor" title="Hal. Sebelumnya">»›</button>' +
-        '<button id="spaceBtnR" class="step" title="Lanjut">Lanjut</button>' +
-      '</div>';
-    readerScroll = document.getElementById("readerScroll");
-    mushafPageEl = document.getElementById("mushafPage");
-    wirePinchZoom(readerScroll);
-    wireSwipeNavigation(readerScroll);
-
-    document.getElementById("revealAll").addEventListener("click", function(){
-      pageCursor[currentPage] = countPageWords(currentPage);
-      renderPage(currentPage, true);
-    });
-    document.getElementById("hideAll").addEventListener("click", function(){
-      pageCursor[currentPage] = 0;
-      renderPage(currentPage, true);
-    });
     document.getElementById("spaceBtnL").addEventListener("click", function(){ moveCursor(1); });
     document.getElementById("spaceBtnR").addEventListener("click", function(){ moveCursor(1); });
     document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });

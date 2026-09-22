@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="id">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Layout 15 Baris</title>
+    <style>
+        :root {
+            --rows: 15;
+            --row-h: max(calc(100dvh / var(--rows)), 10px);
+            /* tinggi baris tetap */
+            --min-gap: 0em;
+            /* jarak minimal antar kata */
+            --fg: #1a1a1a;
+            --bg: #fdfbf5;
+            --btn-bg: rgba(0, 0, 0, .08);
+            --btn-fg: rgba(0, 0, 0, .6);
+        }
+
+        @media (prefers-color-scheme: dark) {
+            :root {
+                --fg: #eee;
+                --bg: #161616;
+                --btn-bg: rgba(255, 255, 255, .12);
+                --btn-fg: rgba(255, 255, 255, .7);
+            }
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            background: var(--bg);
+            color: var(--fg);
+        }
+
+        body {
+            overflow-x: hidden;
+        }
+
+        .page {
+            width: 100%;
+        }
+
+        /* ---------- BARIS ---------- */
+        .row {
+            position: relative;
+            height: var(--row-h);
+            /* tinggi tetap */
+            width: 100%;
+            /* TANPA background: kata yang overflow vertikal tidak tertutup baris lain */
+        }
+
+        /* Viewport: klip horizontal saja, vertikal dibiarkan overflow & tetap terlihat.
+     (overflow: clip memungkinkan x = clip, y = visible) */
+        .viewport {
+            height: 100%;
+            overflow-x: clip;
+            overflow-y: visible;
+            touch-action: pan-y;
+        }
+
+        /* Track: selebar isi, minimal selebar halaman.
+     space-between => jika isi lebih sempit, jarak antar kata otomatis melebar */
+        .track {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            column-gap: var(--min-gap);
+            min-width: 100%;
+            width: max-content;
+            height: 100%;
+            transition: transform .3s ease;
+            will-change: transform;
+        }
+
+        .track.dragging {
+            transition: none;
+        }
+
+        .word {
+            flex: 0 0 auto;
+            white-space: nowrap;
+            line-height: 1;
+            font-size: calc(var(--row-h) * 1.5);
+            /* tinggi kata boleh melebihi tinggi baris; tetap terlihat */
+        }
+
+        /* ---------- TOMBOL INDIKATOR SCROLL ---------- */
+        .nav {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            width: 28px;
+            z-index: 10;
+            border: 0;
+            padding: 0;
+            background: var(--btn-bg);
+            color: var(--btn-fg);
+            font-size: 20px;
+            cursor: pointer;
+            display: none;
+            /* hanya tampil bila ada overflow ke arah itu */
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav.show {
+            display: flex;
+        }
+
+        .nav.left {
+            left: 0;
+            border-radius: 0 6px 6px 0;
+        }
+
+        .nav.right {
+            right: 0;
+            border-radius: 6px 0 0 6px;
+        }
+
+        .nav:hover {
+            background: var(--btn-bg);
+            filter: brightness(.9);
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="page" id="page" dir="ltr"></div>
+    <!-- Untuk teks Arab / RTL, ganti dir="ltr" menjadi dir="rtl" pada #page -->
+
+    <script>
+        /* ============ DATA CONTOH: 15 baris, tiap baris berisi beberapa kata ============ */
+        const sampleWords = ["saya", "membutuhkan", "layout", "halaman", "browser", "kata-kata", "overflow",
+            "baris", "lebar", "tinggi", "scroll", "tombol", "indikator", "otomatis", "jarak", "tetap", "terlihat", "di"];
+        const wordCounts = [4, 6, 3, 14, 5, 22, 7, 3, 18, 9, 4, 26, 6, 12, 5]; // bervariasi: ada yg pendek, ada yg sangat panjang
+
+        const lines = wordCounts.map((n, r) =>
+            Array.from({ length: n }, (_, i) => sampleWords[(r * 5 + i * 3) % sampleWords.length])
+        );
+        // Ganti `lines` dengan data Anda: array 15 elemen, masing-masing array kata.
+
+        /* ============ RENDER ============ */
+        const page = document.getElementById("page");
+        const isRTL = () => getComputedStyle(page).direction === "rtl";
+        const rows = [];
+
+        lines.forEach(words => {
+            const row = document.createElement("div");
+            row.className = "row";
+            row.innerHTML = `
+    <button class="nav left"  aria-label="Scroll ke kiri">‹</button>
+    <div class="viewport"><div class="track"></div></div>
+    <button class="nav right" aria-label="Scroll ke kanan">›</button>`;
+            const track = row.querySelector(".track");
+            words.forEach(w => {
+                const s = document.createElement("span");
+                s.className = "word";
+                s.textContent = w;
+                track.appendChild(s);
+            });
+            page.appendChild(row);
+
+            const state = {
+                row, track,
+                viewport: row.querySelector(".viewport"),
+                btnL: row.querySelector(".nav.left"),
+                btnR: row.querySelector(".nav.right"),
+                tx: 0
+            };
+            rows.push(state);
+
+            state.btnL.addEventListener("click", () => move(state, -1));
+            state.btnR.addEventListener("click", () => move(state, +1));
+
+            /* swipe / drag (sentuh & mouse) */
+            let startX = 0, startTx = 0, active = false;
+            state.viewport.addEventListener("pointerdown", e => {
+                active = true; startX = e.clientX; startTx = state.tx;
+                state.track.classList.add("dragging");
+                state.viewport.setPointerCapture(e.pointerId);
+            });
+            state.viewport.addEventListener("pointermove", e => {
+                if (!active) return;
+                setTx(state, startTx + (e.clientX - startX));
+            });
+            const end = () => { active = false; state.track.classList.remove("dragging"); };
+            state.viewport.addEventListener("pointerup", end);
+            state.viewport.addEventListener("pointercancel", end);
+
+            /* wheel horizontal (trackpad / shift+wheel) */
+            state.viewport.addEventListener("wheel", e => {
+                const d = Math.abs(e.deltaX) > Math.abs(e.deltaY) ? e.deltaX : (e.shiftKey ? e.deltaY : 0);
+                if (!d) return;
+                e.preventDefault();
+                state.track.classList.add("dragging");
+                setTx(state, state.tx - d);
+                clearTimeout(state._wt);
+                state._wt = setTimeout(() => state.track.classList.remove("dragging"), 120);
+            }, { passive: false });
+        });
+
+        /* ============ LOGIKA SCROLL ============ */
+        function range(s) {
+            const max = Math.max(0, s.track.scrollWidth - s.viewport.clientWidth);
+            return isRTL() ? { min: 0, max } : { min: -max, max: 0 };
+        }
+
+        function setTx(s, v) {
+            const r = range(s);
+            s.tx = Math.min(r.max, Math.max(r.min, v));
+            s.track.style.transform = `translateX(${s.tx}px)`;
+            s.btnR.classList.toggle("show", s.tx > r.min);  // masih ada isi di kanan
+            s.btnL.classList.toggle("show", s.tx < r.max);  // masih ada isi di kiri
+        }
+
+        function move(s, dir) {              // dir: +1 = scroll ke kanan, -1 = ke kiri
+            const step = s.viewport.clientWidth * 0.6;
+            setTx(s, s.tx - dir * step);
+        }
+
+        function refresh() {
+            rows.forEach(s => {
+                // di RTL, awal konten ada di sisi kanan → tx awal 0 sudah benar
+                setTx(s, s.tx);
+            });
+        }
+
+        window.addEventListener("resize", refresh);
+        document.fonts && document.fonts.ready.then(refresh);
+        refresh();
+    </script>
+</body>
+
+</html>
