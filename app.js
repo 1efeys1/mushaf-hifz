@@ -2162,7 +2162,7 @@
       '</div>' +
       '<div class="reveal-controls">' +
         '<button id="nextPage" class="minor" title="Hal. Berikutnya">‹«</button>' +
-        '<button id="revealAll" class="minor" title="Tampilkan semua">👁</button>' +
+        '<button id="revealAll" class="minor" title="Tampilkan semua">📖</button>' +
         '<button id="ayahBtn" class="minor" title="Lanjut 1 Ayat">(١) ⏮</button>' +
         '<button id="spaceBtn" class="step" title="Lanjut">(افتح)</button>' +
         '<button id="backspaceBtn" class="minor" title="Ulangi">⌫</button>' +
