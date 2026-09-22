@@ -1136,7 +1136,7 @@
     font-size:20px;
     border-width:2px;
     line-height:1;
-    padding-right: 14px;
+    padding-right: 4px;
   }
   .reveal-controls button.minor{
     width:34px;
@@ -1335,7 +1335,7 @@
 
     .reveal-controls{ gap:6px; padding:8px; }
     .reveal-controls button{ padding:8px 10px; font-size:11.5px; }
-    /* .reveal-controls button.step{ padding:8px 14px; } */
+    /* .reveal-controls button.step{ padding:4px 4px; } */
     .reveal-controls button.minor{ padding:8px; font-size:13px; }
   }
 
