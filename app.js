@@ -2161,7 +2161,7 @@
         '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
-        '<button id="spaceBtnL" class="step minor" title="Lanjut">◀</button>' +
+        '<button id="spaceBtnL" class="step minor" title="Lanjut">ف</button>' +
         '<button id="nextPage" class="minor" title="Hal. Berikutnya">‹«</button>' +
         '<button id="revealAll" class="minor" title="Tampilkan semua">📖</button>' +
         '<button id="ayahBtn" class="minor" title="Lanjut 1 Ayat">(١) ⏮</button>' +
@@ -2169,7 +2169,7 @@
         '<button id="backspaceBtn" class="minor" title="Ulangi">⌫</button>' +
         '<button id="hideAll" class="minor" title="Ulang Semua">↺</button>' +
         '<button id="prevPage" class="minor" title="Hal. Sebelumnya">»›</button>' +
-        '<button id="spaceBtnR" class="step minor" title="Lanjut">◀</button>' +
+        '<button id="spaceBtnR" class="step minor" title="Lanjut">ف</button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
