@@ -879,7 +879,7 @@
     position:absolute;
     top:-0.65em;
     left:-0.55em;
-    font-size:.55em;
+    font-size: calc(var(--ayah-size) * var(--ayah-font-scale) * 0.5);
     line-height:1;
     cursor:pointer;
     /* invisible padding widens the hit target without growing the visual icon */
@@ -916,7 +916,7 @@
      default-hidden/.revealed state mirroring it instead of inheriting it. */
   .num{
     font-family:'Work Sans',sans-serif;
-    font-size:0.5em;
+    font-size: calc(var(--ayah-size) * var(--ayah-font-scale) * 0.5);
     color:var(--gold);
     border:1px solid var(--gold);
     border-radius:50%;
@@ -932,7 +932,7 @@
     opacity:.5;
     transition:filter .22s ease, opacity .22s ease;
     position:relative;
-    top:2.5em;
+    top:2em;
   }
   .num.revealed{ filter:blur(0); opacity:1; }
   .sajda-tag{
