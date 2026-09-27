@@ -2453,7 +2453,7 @@
               // its Indonesian gloss (always visible — a study aid, never tested — see
               // body.hide-word-gloss in style.css for the toggle)
               html += '<span class="word-cell">' +
-                '<span class="word' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>' +
+                '<span class="word' + ((si==1) ? " waqaf" : "") + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>' +
                 (gloss && si === 0 ? '<span class="wgloss" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + escapeHtml(gloss) + '</span>' : "") +
               '</span>';
               if (isLastOfAyah){

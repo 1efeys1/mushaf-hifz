@@ -675,10 +675,9 @@
   }
 
   .surah-banner{
-    margin:6px auto 22px;
+    margin:4px auto 4px;
     max-width:520px;
     text-align:center;
-    padding:14px 18px 16px;
     position:relative;
   }
   .surah-banner::before,.surah-banner::after{
@@ -686,10 +685,10 @@
     display:block;
     height:1px;
     background:linear-gradient(90deg, transparent, var(--gold), transparent);
-    margin:0 auto 10px;
+    margin:0 auto 2px;
     width:70%;
   }
-  .surah-banner::after{ margin:10px auto 0; }
+  .surah-banner::after{ margin:2px auto 0; }
   .surah-banner .name{
     font-family:'Amiri Quran',serif;
     font-size:calc(var(--ayah-size) * var(--page-scale) * 1.15);
@@ -722,7 +721,7 @@
     font-family:'Amiri Quran',serif;
     font-size:calc(var(--ayah-size) * var(--page-scale) * 0.92);
     color:var(--ink);
-    margin:4px 0 20px;
+    margin:4px 0 4px;
   }
 
   .ayat-flow{
@@ -749,6 +748,7 @@
        but the scrollbar itself renders as a stray "separator line" between rows (issue #15)
        — hide it entirely (both engines), the scroll still works */
     scrollbar-width:none;
+    margin-top: -3%;
   }
   /* Center alignment for pages 1 and 2 */
   #mushafPage[data-page="1"] .mushaf-line,
@@ -767,6 +767,7 @@
     vertical-align:top;
     text-align:center;
     font-size:calc(var(--ayah-size) * var(--ayah-font-scale));
+    margin-bottom: 3%;
   }
   .wgloss{
     display:none;
@@ -804,6 +805,11 @@
     -webkit-touch-callout:none;
     -webkit-user-select:none;
     user-select:none;
+  }
+  .word.waqaf {
+    position: relative;
+    top: 0.5em;
+    padding-right: 0.5em;
   }
   .word.revealed{
     filter:blur(0);
@@ -1344,7 +1350,7 @@
     :root{ --ayah-size:18px; }
 
     .reader-scroll{ padding-left:8px; padding-right:8px; }
-    .surah-banner{ margin:2px auto 14px; padding:8px 12px 10px; }
+    .surah-banner{ margin:2px auto 2px;}
     .surah-banner .meta{ font-size:10px; }
 
     .reveal-controls{ gap:6px; padding:8px; }
