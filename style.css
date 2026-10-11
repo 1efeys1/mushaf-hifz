@@ -401,7 +401,7 @@
     /* bottom clears the fixed .reveal-controls bar — its height varies by breakpoint/content,
        so app.js measures it and sets the var (with a breathing-room buffer baked in), not
        hardcoded here. */
-    padding:14px 16px var(--footer-h, 60px);
+    padding:14px 0 var(--footer-h, 60px) 0;
   }
   /* While zoomed, centering leaves a dead gap to the left of the page that's included in the
      scrollable area but never reachable-as-content — scrolling right to see the zoomed-in
@@ -672,6 +672,9 @@
     position:absolute; inset:16px 1px;
     pointer-events:none;
     opacity:.55;
+  }
+  body.ayah-mode .mushaf-page{
+    padding:46px 14px;
   }
 
   .surah-banner{
@@ -1303,7 +1306,7 @@
   }
   .center-screen .ar{ font-family:'Amiri Quran',serif; font-size:22px; color:var(--gold-soft); }
 
-  ::-webkit-scrollbar{ width:10px; }
+  ::-webkit-scrollbar{ width:4px; }
   ::-webkit-scrollbar-track{ background:transparent; }
   ::-webkit-scrollbar-thumb{ background:#3c5947; border-radius:6px; }
 
@@ -1323,6 +1326,7 @@
       z-index:16;
     }
     .mushaf-page{ padding:22px 4px 30px; }
+    body.ayah-mode .mushaf-page{ padding:22px 14px 30px; }
 
     /* ---- compact single-row header: [☰ surahStatus page-jump ⚙] — the decorative brand
        wordmark gives way to the current surah name on narrow screens ---- */
@@ -1349,7 +1353,7 @@
 
     :root{ --ayah-size:18px; }
 
-    .reader-scroll{ padding-left:8px; padding-right:8px; }
+    .reader-scroll{ padding-left:0; padding-right:0; }
     .surah-banner{ margin:2px auto 2px;}
     .surah-banner .meta{ font-size:10px; }
 
