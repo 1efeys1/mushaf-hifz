@@ -692,6 +692,10 @@
     width:70%;
   }
   .surah-banner::after{ margin:2px auto 0; }
+  
+  #mushafPage[data-page="1"] .surah-banner::after{
+    margin-bottom: 20px;
+  }
   .surah-banner .name{
     font-family:'Amiri Quran',serif;
     font-size:calc(var(--ayah-size) * var(--page-scale) * 1.15);
@@ -724,7 +728,7 @@
     font-family:'Amiri Quran',serif;
     font-size:calc(var(--ayah-size) * var(--page-scale) * 0.92);
     color:var(--ink);
-    margin:4px 0 4px;
+    margin:-1% 0 2%;
   }
 
   .ayat-flow{
