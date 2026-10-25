@@ -89,6 +89,19 @@ async function handleSettingsChange() {
     }
 }
 
+async function saveSettingsToCloud(settingName, settingValue) {
+    if (currentUserId) {
+        try {
+            const docRef = doc(db, "users", currentUserId, "config", settingName);
+            await setDoc(docRef, settingValue, { merge: true });
+            txtSyncStatus.innerText = "Status: Tersinkronisasi dengan Cloud";
+        } catch (error) {
+            console.warn("Gagal sinkron cloud (Offline).", error);
+            txtSyncStatus.innerText = "Status: Tersimpan Lokal (Menunggu Online)";
+        }
+    }
+}
+
 if (chkDarkMode && selFontSize) {
     // Event Listener untuk Perubahan Input User
     chkDarkMode.addEventListener('change', handleSettingsChange);
@@ -124,6 +137,41 @@ function startCloudSync(userId) {
     });
 }
 
+function startSettingCloudSync(userId, settingName, applyUi) {
+    if (!applyUi) {
+        return;
+    }
+    if (unsubscribeSnapshot) unsubscribeSnapshot(); // Bersihkan listener lama jika ada
+
+    const docRef = doc(db, "users", userId, "config", settingName);
+    const rawData = localStorage.getItem(settingName);
+    let locals = null;
+    if (rawData) {
+        locals = JSON.parse(rawData);
+    }
+
+    unsubscribeSnapshot = onSnapshot(docRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const cloudSettings = snapshot.data();
+            // Bandingkan timestamp: Ambil yang paling baru
+            if (!locals || cloudSettings.lastUpdated > locals.lastUpdated) {
+                localStorage.setItem(settingName, JSON.stringify(cloudSettings));
+                locals = cloudSettings;
+                applyUi(cloudSettings);
+                txtSyncStatus.innerText = "Status: Diperbarui dari Device Lain";
+            }
+            // Jika data lokal lebih baru daripada cloud (kasus habis offline lalu online lagi)
+            else if (locals && cloudSettings.lastUpdated < locals.lastUpdated) {
+                setDoc(docRef, locals, { merge: true });
+                txtSyncStatus.innerText = "Status: Memperbarui Cloud...";
+            }
+        } else if (locals) {
+            // Kasus user baru pertama kali login di device ini tapi lokal sudah ada data settings
+            setDoc(docRef, localSettings, { merge: true });
+        }
+    });
+}
+
 // --- SISTEM OTENTIKASI (AUTH) ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -137,6 +185,9 @@ onAuthStateChanged(auth, (user) => {
 
         // Mulai sinkronisasi cloud setelah user sukses terverifikasi
         startCloudSync(user.uid);
+        if (startBookmarkCloudSync) {
+            startBookmarkCloudSync(user.uid);
+        }
     } else {
         currentUserId = null;
         txtUserInfo.innerText = "Anda belum login. Pengaturan hanya disimpan di browser ini.";
