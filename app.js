@@ -1271,7 +1271,7 @@
     let bookmarksKey = BOOKMARKS_KEY + "-" + V_1_1;
     // try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks)); } catch (e) { /* storage unavailable (private mode/full) — bookmark just won't persist */ }
     try { localStorage.setItem(bookmarksKey, JSON.stringify(updatedData)); } catch (e) { /* storage unavailable (private mode/full) — bookmark just won't persist */ }
-    // saveSettingsToCloud(bookmarksKey, updatedData);
+    saveSettingsToCloud(bookmarksKey, updatedData);
   }
 
   var bookmarks = loadBookmarks();
