@@ -1271,23 +1271,27 @@
     let bookmarksKey = BOOKMARKS_KEY + "-" + V_1_1;
     // try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks)); } catch (e) { /* storage unavailable (private mode/full) — bookmark just won't persist */ }
     try { localStorage.setItem(bookmarksKey, JSON.stringify(updatedData)); } catch (e) { /* storage unavailable (private mode/full) — bookmark just won't persist */ }
-    saveSettingsToCloud(bookmarksKey, updatedData);
+    window.sinkron_saveSettingsToCloud(bookmarksKey, updatedData);
   }
 
   var bookmarks = loadBookmarks();
 
   async function startBookmarkCloudSync(userId) {
       let bookmarksKey = BOOKMARKS_KEY + "-" + V_1_1;
-      startSettingCloudSync(userId, bookmarksKey, loadBookmarksFromCloud);    
+      window.sinkron_startSettingCloudSync(userId, bookmarksKey, loadBookmarksFromCloud);    
   }
+
+  window.app_startBookmarkCloudSync = startBookmarkCloudSync;
 
   async function loadBookmarksFromCloud(cloudBookmarks) {
     let arr = cloudBookmarks.arr;
     if (!Array.isArray(arr)) return [];
-    return arr.filter(function (b) {
+    arr.filter(function (b) {
       return b && Number.isInteger(b.surah) && Number.isInteger(b.ayah) && Number.isInteger(b.page) &&
         b.surah >= 1 && b.surah <= 114 && b.page >= 1 && b.page <= TOTAL_PAGES;
     });
+    bookmarks = arr;
+    renderBookmarkList();
   }
 
   function findBookmarkIndex(surah, ayah) {

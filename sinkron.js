@@ -102,6 +102,8 @@ async function saveSettingsToCloud(settingName, settingValue) {
     }
 }
 
+window.sinkron_saveSettingsToCloud = saveSettingsToCloud;
+
 if (chkDarkMode && selFontSize) {
     // Event Listener untuk Perubahan Input User
     chkDarkMode.addEventListener('change', handleSettingsChange);
@@ -172,6 +174,8 @@ function startSettingCloudSync(userId, settingName, applyUi) {
     });
 }
 
+window.sinkron_startSettingCloudSync = startSettingCloudSync;
+
 // --- SISTEM OTENTIKASI (AUTH) ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -185,8 +189,8 @@ onAuthStateChanged(auth, (user) => {
 
         // Mulai sinkronisasi cloud setelah user sukses terverifikasi
         startCloudSync(user.uid);
-        if (startBookmarkCloudSync) {
-            startBookmarkCloudSync(user.uid);
+        if (window.app_startBookmarkCloudSync) {
+            window.app_startBookmarkCloudSync(user.uid);
         }
     } else {
         currentUserId = null;
