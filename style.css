@@ -80,6 +80,7 @@
   button.chip:hover{ background:#24463482; border-color:var(--gold-soft); }
   button.chip:disabled{ opacity:.35; cursor:not-allowed; }
   button.chip.primary{ border-color:var(--gold-soft); color:var(--gold-soft); }
+  .hidden { visibility: hidden; }
 
   .nav-controls{
     display:flex; align-items:center; gap:12px;

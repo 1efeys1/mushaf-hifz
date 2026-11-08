@@ -1,12 +1,12 @@
-(function(){
+(function () {
   "use strict";
 
   var TOTAL_PAGES = 604;
-  var AR_DIGITS = ["٠","١","٢","٣","٤","٥","٦","٧","٨","٩"];
+  var AR_DIGITS = ["٠", "١", "٢", "٣", "٤", "٥", "٦", "٧", "٨", "٩"];
   var BASMALAH = "بِسْمِ اللَّهِ الرَّحْمَٰنِ الرَّحِيمِ";
 
-  function toArabicDigits(n){
-    return String(n).split("").map(function(d){
+  function toArabicDigits(n) {
+    return String(n).split("").map(function (d) {
       return /\d/.test(d) ? AR_DIGITS[+d] : d;
     }).join("");
   }
@@ -15,7 +15,7 @@
   // the CSS breakpoints in style.css (portrait mobile, or extreme landscape like a phone
   // rotated sideways, which is often *wider* than the portrait breakpoint so needs its own
   // check here too).
-  function isOverlaySidebarMode(){
+  function isOverlaySidebarMode() {
     return window.innerWidth <= 760 || (window.innerWidth > window.innerHeight && window.innerHeight <= 500);
   }
 
@@ -34,20 +34,20 @@
   var HINT_WORDS_KEY = "mushafHifzHintWords";
   var HINT_WORDS_MAX = 5;
 
-  function loadHintWordCount(){
-    try{
+  function loadHintWordCount() {
+    try {
       var n = parseInt(localStorage.getItem(HINT_WORDS_KEY), 10);
       return Number.isInteger(n) && n >= 0 && n <= HINT_WORDS_MAX ? n : 0;
-    } catch(e){
+    } catch (e) {
       return 0;
     }
   }
 
   var hintWordCount = loadHintWordCount();
 
-  function setHintWordCount(n){
+  function setHintWordCount(n) {
     hintWordCount = Math.max(0, Math.min(HINT_WORDS_MAX, n));
-    try{ localStorage.setItem(HINT_WORDS_KEY, String(hintWordCount)); } catch(e){ /* storage unavailable — just won't persist */ }
+    try { localStorage.setItem(HINT_WORDS_KEY, String(hintWordCount)); } catch (e) { /* storage unavailable — just won't persist */ }
     renderPage(currentPage, true); // mode-aware — hint words apply in both mushaf and ayah view
   }
 
@@ -59,28 +59,28 @@
   var TRANSLATION_FONT_SCALE_KEY = "mushafHifzTranslationFontScale";
   var AYAH_FONT_SCALE_MIN = 0.5, AYAH_FONT_SCALE_MAX = 2.5, AYAH_FONT_SCALE_STEP = 0.01;
 
-  function loadViewMode(){
-    try{
+  function loadViewMode() {
+    try {
       return localStorage.getItem(VIEW_MODE_KEY) === "ayah" ? "ayah" : "mushaf";
-    } catch(e){
+    } catch (e) {
       return "mushaf";
     }
   }
 
-  function loadAyahFontScale(){
-    try{
+  function loadAyahFontScale() {
+    try {
       var n = parseFloat(localStorage.getItem(AYAH_FONT_SCALE_KEY));
       return n >= AYAH_FONT_SCALE_MIN && n <= AYAH_FONT_SCALE_MAX ? n : 1;
-    } catch(e){
+    } catch (e) {
       return 1;
     }
   }
 
-  function loadTranslationFontScale(){
-    try{
+  function loadTranslationFontScale() {
+    try {
       var n = parseFloat(localStorage.getItem(TRANSLATION_FONT_SCALE_KEY));
       return n >= AYAH_FONT_SCALE_MIN && n <= AYAH_FONT_SCALE_MAX ? n : 1;
-    } catch(e){
+    } catch (e) {
       return 1;
     }
   }
@@ -91,16 +91,16 @@
 
   // syncs the toolbar/body to the current viewMode/ayahFontScale without changing either —
   // called after wiring the settings panel, and from the setters below.
-  function applyViewModeUI(){
+  function applyViewModeUI() {
     document.body.classList.toggle("ayah-mode", viewMode === "ayah");
     var m = document.getElementById("viewByMushaf"), a = document.getElementById("viewByAyat");
-    if (m && a){
+    if (m && a) {
       m.classList.toggle("active", viewMode === "mushaf");
       a.classList.toggle("active", viewMode === "ayah");
     }
   }
 
-  function applyAyahFontScale(){
+  function applyAyahFontScale() {
     document.documentElement.style.setProperty("--ayah-font-scale", ayahFontScale.toFixed(2));
     var slider = document.getElementById("arabicSizeSlider");
     if (slider) slider.value = String(ayahFontScale);
@@ -108,7 +108,7 @@
     if (label) label.textContent = Math.round(ayahFontScale * 100) + "%";
   }
 
-  function applyTranslationFontScale(){
+  function applyTranslationFontScale() {
     document.documentElement.style.setProperty("--translation-font-scale", translationFontScale.toFixed(2));
     var slider = document.getElementById("translationSizeSlider");
     if (slider) slider.value = String(translationFontScale);
@@ -116,25 +116,25 @@
     if (label) label.textContent = Math.round(translationFontScale * 100) + "%";
   }
 
-  function setViewMode(mode){
+  function setViewMode(mode) {
     mode = mode === "ayah" ? "ayah" : "mushaf";
     if (mode === viewMode) return;
     viewMode = mode;
-    try{ localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch(e){ /* storage unavailable — just won't persist */ }
+    try { localStorage.setItem(VIEW_MODE_KEY, viewMode); } catch (e) { /* storage unavailable — just won't persist */ }
     applyViewModeUI();
     resetPageZoom(); // the two modes share one page element — never carry mushaf-mode zoom into the ayah view
     renderPage(currentPage);
   }
 
-  function setAyahFontScale(n){
+  function setAyahFontScale(n) {
     ayahFontScale = Math.max(AYAH_FONT_SCALE_MIN, Math.min(AYAH_FONT_SCALE_MAX, Math.round(n * 10) / 10));
-    try{ localStorage.setItem(AYAH_FONT_SCALE_KEY, String(ayahFontScale)); } catch(e){ /* storage unavailable — just won't persist */ }
+    try { localStorage.setItem(AYAH_FONT_SCALE_KEY, String(ayahFontScale)); } catch (e) { /* storage unavailable — just won't persist */ }
     applyAyahFontScale();
   }
 
-  function setTranslationFontScale(n){
+  function setTranslationFontScale(n) {
     translationFontScale = Math.max(AYAH_FONT_SCALE_MIN, Math.min(AYAH_FONT_SCALE_MAX, Math.round(n * 10) / 10));
-    try{ localStorage.setItem(TRANSLATION_FONT_SCALE_KEY, String(translationFontScale)); } catch(e){ /* storage unavailable — just won't persist */ }
+    try { localStorage.setItem(TRANSLATION_FONT_SCALE_KEY, String(translationFontScale)); } catch (e) { /* storage unavailable — just won't persist */ }
     applyTranslationFontScale();
   }
 
@@ -146,14 +146,14 @@
   var CONTENT_PREFS_KEY = "mushafHifzContentPrefs";
   var LEGACY_TAJWEED_KEY = "mushafHifzTajweed"; // pre-settings-panel single toggle — migrated once
 
-  function loadContentPrefs(){
+  function loadContentPrefs() {
     var prefs = { arabic: true, translation: true, wordGloss: true, tajweed: false };
-    try{
+    try {
       var raw = localStorage.getItem(CONTENT_PREFS_KEY);
-      if (raw){
+      if (raw) {
         var p = JSON.parse(raw);
-        if (p && typeof p === "object"){
-          ["arabic","translation","wordGloss","tajweed"].forEach(function(k){
+        if (p && typeof p === "object") {
+          ["arabic", "translation", "wordGloss", "tajweed"].forEach(function (k) {
             if (typeof p[k] === "boolean") prefs[k] = p[k];
           });
         }
@@ -161,29 +161,29 @@
         var legacy = localStorage.getItem(LEGACY_TAJWEED_KEY);
         if (legacy !== null) prefs.tajweed = legacy === "on";
       }
-    } catch(e){ /* storage unavailable — defaults */ }
+    } catch (e) { /* storage unavailable — defaults */ }
     return prefs;
   }
 
   var contentPrefs = loadContentPrefs();
 
-  function saveContentPrefs(){
-    try{ localStorage.setItem(CONTENT_PREFS_KEY, JSON.stringify(contentPrefs)); } catch(e){ /* just won't persist */ }
+  function saveContentPrefs() {
+    try { localStorage.setItem(CONTENT_PREFS_KEY, JSON.stringify(contentPrefs)); } catch (e) { /* just won't persist */ }
   }
 
-  function applyContentPrefsUI(){
+  function applyContentPrefsUI() {
     document.body.classList.toggle("tajweed-on", contentPrefs.tajweed);
     document.body.classList.toggle("hide-arabic", !contentPrefs.arabic);
     document.body.classList.toggle("hide-translation", !contentPrefs.translation);
     document.body.classList.toggle("hide-word-gloss", !contentPrefs.wordGloss);
     var ids = { contentArabic: "arabic", contentTranslation: "translation", contentWordGloss: "wordGloss", contentTajweed: "tajweed" };
-    Object.keys(ids).forEach(function(id){
+    Object.keys(ids).forEach(function (id) {
       var cb = document.getElementById(id);
       if (cb) cb.checked = contentPrefs[ids[id]];
     });
   }
 
-  function setContentPref(key, on){
+  function setContentPref(key, on) {
     if (!(key in contentPrefs)) return;
     contentPrefs[key] = !!on;
     saveContentPrefs();
@@ -198,12 +198,12 @@
   var AUDIO_PREFS_KEY = "mushafHifzAudioPrefs";
   var RANGE_REPEAT_MAX = 10;
 
-  function loadAudioPrefs(){
+  function loadAudioPrefs() {
     var prefs = { tapPlay: true, syncReveal: true, autoScroll: true, surah: 1, from: 1, to: 7, repeat: 1, repeatMode: "ayah", speed: 1 };
     var migrated = false;
-    try{
+    try {
       var raw = JSON.parse(localStorage.getItem(AUDIO_PREFS_KEY));
-      if (raw && typeof raw === "object"){
+      if (raw && typeof raw === "object") {
         if (typeof raw.tapPlay === "boolean") prefs.tapPlay = raw.tapPlay;
         if (typeof raw.syncReveal === "boolean") prefs.syncReveal = raw.syncReveal;
         if (typeof raw.autoScroll === "boolean") prefs.autoScroll = raw.autoScroll;
@@ -216,29 +216,29 @@
         // the follow-along toggles now default ON — flip stored OFFs once for prefs
         // saved before that default existed (raw.v2Defaults absent); the flag then
         // rides along in every save so later manual toggles keep sticking
-        if (!raw.v2Defaults){
+        if (!raw.v2Defaults) {
           prefs.tapPlay = prefs.syncReveal = prefs.autoScroll = true;
           migrated = true;
         }
         prefs.v2Defaults = true;
       }
-    } catch(e){ /* storage unavailable — defaults */ }
-    if (migrated){ try{ localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(prefs)); } catch(e){ /* just won't persist */ } }
+    } catch (e) { /* storage unavailable — defaults */ }
+    if (migrated) { try { localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(prefs)); } catch (e) { /* just won't persist */ } }
     return prefs;
   }
 
   var audioPrefs = loadAudioPrefs();
 
-  function saveAudioPrefs(){
-    try{ localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(audioPrefs)); } catch(e){ /* just won't persist */ }
+  function saveAudioPrefs() {
+    try { localStorage.setItem(AUDIO_PREFS_KEY, JSON.stringify(audioPrefs)); } catch (e) { /* just won't persist */ }
   }
 
-  function applyTapPlayUI(){
+  function applyTapPlayUI() {
     var cb = document.getElementById("tapPlayToggle");
     if (cb) cb.checked = audioPrefs.tapPlay;
   }
 
-  function playWordAtIndex(pageNo, idx){
+  function playWordAtIndex(pageNo, idx) {
     // while a range playback is running the element belongs to it — revealing words stays
     // SILENT so the user can test themselves word-by-word alongside the playback
     if (!audioPrefs.tapPlay || Reciter.rangeActive()) return;
@@ -246,15 +246,15 @@
     var ordinal = getPageWordOrdinals(pageNo)[idx];
     if (!pair || !ordinal) return;
     setPlayingAyah(null); // a word tap cuts any running tap-ayah playback — no ayah to light
-    Reciter.playWord(pair[0], pair[1], ordinal, null, function(){
+    Reciter.playWord(pair[0], pair[1], ordinal, null, function () {
       showAudioNotice("Gagal memuat audio kata");
     });
   }
 
-  function playAyahPair(pair){
+  function playAyahPair(pair) {
     if (!audioPrefs.tapPlay || Reciter.rangeActive() || !pair) return;
     setPlayingAyah(pair);
-    Reciter.playAyah(pair[0], pair[1], function(){ setPlayingAyah(null); }, function(){
+    Reciter.playAyah(pair[0], pair[1], function () { setPlayingAyah(null); }, function () {
       setPlayingAyah(null);
       showAudioNotice("Gagal memuat audio");
     });
@@ -266,34 +266,34 @@
   // the spans after each innerHTML swap.
   var playingAyah = null;
 
-  function setPlayingAyah(pair){
+  function setPlayingAyah(pair) {
     playingAyah = pair;
     applyPlayingHighlight();
     if (pair) beginKaraoke(pair);
     else karaoke = null;
   }
 
-  function applyPlayingHighlight(){
+  function applyPlayingHighlight() {
     var container = document.getElementById("mushafPage");
     if (!container) return;
-    container.querySelectorAll(".playing").forEach(function(el){ el.classList.remove("playing"); });
+    container.querySelectorAll(".playing").forEach(function (el) { el.classList.remove("playing"); });
     if (!playingAyah) return;
     var surah = playingAyah[0], ayah = playingAyah[1];
     // ayah view: whole-ayat blocks exist in the DOM — light the block itself
     var block = container.querySelector('.ayah-block[data-surah="' + surah + '"][data-ayah="' + ayah + '"]');
-    if (block){ block.classList.add("playing"); return; }
+    if (block) { block.classList.add("playing"); return; }
     // mushaf view: no per-ayah wrapper, so light every span whose data-idx falls inside the
     // ayah's word range on this page (the list is index-parallel to data-idx)
     var list = getPageWordAyahList(currentPage);
     var lo = -1, hi = -1;
-    for (var i = 0; i < list.length; i++){
-      if (list[i][0] === surah && list[i][1] === ayah){
+    for (var i = 0; i < list.length; i++) {
+      if (list[i][0] === surah && list[i][1] === ayah) {
         if (lo < 0) lo = i;
         hi = i;
       }
     }
     if (lo < 0) return; // ayah isn't on this page — nothing to light
-    container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
+    container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function (el) {
       var idx = +el.dataset.idx;
       if (idx >= lo && idx <= hi) el.classList.add("playing");
     });
@@ -305,27 +305,27 @@
   // per-ayah wrapper, so it resolves the ayah's word range — same trick as above. Notes in
   // ayah mode are baked into the render itself (see renderAyahPageContent); mushaf mode
   // only gets a small marker on the ayah's .num badge.
-  function applyAyahDecorations(){
+  function applyAyahDecorations() {
     var container = document.getElementById("mushafPage");
     if (!container) return;
-    container.querySelectorAll(".hl-1, .hl-2, .hl-3, .hl-4").forEach(function(el){
+    container.querySelectorAll(".hl-1, .hl-2, .hl-3, .hl-4").forEach(function (el) {
       el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
     });
-    container.querySelectorAll(".note-marker").forEach(function(el){ el.remove(); });
+    container.querySelectorAll(".note-marker").forEach(function (el) { el.remove(); });
     var seen = {};
-    Object.keys(highlights).concat(Object.keys(notes)).forEach(function(key){
+    Object.keys(highlights).concat(Object.keys(notes)).forEach(function (key) {
       if (seen[key]) return;
       seen[key] = true;
       var parts = key.split(":");
       var surah = +parts[0], ayah = +parts[1];
       var h = highlights[key] || {};
       var block = container.querySelector('.ayah-block[data-surah="' + surah + '"][data-ayah="' + ayah + '"]');
-      if (block){ // ayah view
-        if (h.ar){
+      if (block) { // ayah view
+        if (h.ar) {
           var words = block.querySelector(".ayah-words");
           if (words) words.classList.add("hl-" + h.ar);
         }
-        if (h.tr){
+        if (h.tr) {
           var tr = block.querySelector(".ayah-translation");
           if (tr) tr.classList.add("hl-" + h.tr);
         }
@@ -333,30 +333,30 @@
       }
       var list = getPageWordAyahList(currentPage); // mushaf view
       var lo = -1, hi = -1;
-      for (var i = 0; i < list.length; i++){
-        if (list[i][0] === surah && list[i][1] === ayah){
+      for (var i = 0; i < list.length; i++) {
+        if (list[i][0] === surah && list[i][1] === ayah) {
           if (lo < 0) lo = i;
           hi = i;
         }
       }
       if (lo < 0) return; // ayah isn't on this page
-      container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
+      container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function (el) {
         var idx = +el.dataset.idx;
         if (idx < lo || idx > hi) return;
         // "ar" lights the Arabic row (word/num/sajda), "tr" lights the Indonesian glosses
         if (h.ar && !el.classList.contains("wgloss")) el.classList.add("hl-" + h.ar);
         if (h.tr && el.classList.contains("wgloss")) el.classList.add("hl-" + h.tr);
       });
-      if (notes[key]){
+      if (notes[key]) {
         // a real element, not a ::after, so tapping it opens the note directly — no
         // long-press needed (the badge itself still reveals/plays on tap)
         var num = container.querySelector('.num[data-idx="' + hi + '"]');
-        if (num){
+        if (num) {
           var marker = document.createElement("span");
           marker.className = "note-marker";
           marker.textContent = "📝";
           marker.title = "Lihat catatan";
-          marker.addEventListener("click", function(e){
+          marker.addEventListener("click", function (e) {
             e.stopPropagation();
             showNoteSheet(surah, ayah);
           });
@@ -367,9 +367,9 @@
     // drag-selected word ranges ride on top of whole-ayah stabilo: "ar" recolors the
     // arabic words, "tr" their glosses. A side left null has no opinion — whatever the
     // whole-ayah pass painted there stays (arti-only and arab-only selections coexist)
-    wordHighlights.forEach(function(entry){
+    wordHighlights.forEach(function (entry) {
       var list = null; // mushaf mode resolves ayahs through the page-wide idx list
-      container.querySelectorAll(".word, .wgloss, .aw-gloss").forEach(function(el){
+      container.querySelectorAll(".word, .wgloss, .aw-gloss").forEach(function (el) {
         if (el.dataset.w === undefined) return;
         var block = el.closest(".ayah-block");
         var pair = block
@@ -379,7 +379,7 @@
         var w = +el.dataset.w;
         if (w < entry.w1 || w > entry.w2) return;
         var color = (el.classList.contains("wgloss") || el.classList.contains("aw-gloss")) ? entry.tr : entry.ar;
-        if (color){
+        if (color) {
           el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
           el.classList.add("hl-" + color);
         }
@@ -388,10 +388,10 @@
     // arti-only ranges over the ayah's full translation (selected by dragging the
     // translation text itself) — ayah view only, that text doesn't exist in mushaf mode.
     // They paint their own words, so a whole-ayah tr color still shows through around them.
-    trHighlights.forEach(function(entry){
+    trHighlights.forEach(function (entry) {
       var block = container.querySelector('.ayah-block[data-surah="' + entry.s + '"][data-ayah="' + entry.a + '"]');
       if (!block) return;
-      block.querySelectorAll(".tr-word").forEach(function(el){
+      block.querySelectorAll(".tr-word").forEach(function (el) {
         var t = +el.dataset.t;
         if (t < entry.t1 || t > entry.t2) return;
         el.classList.remove("hl-1", "hl-2", "hl-3", "hl-4");
@@ -403,10 +403,10 @@
   // one place for "a page just rendered" playback bookkeeping: re-light the playing
   // ayah, restart its karaoke state (so playback survives page advances mid-ayah — the
   // reveal catches up in one batch once the page's data lands), and keep following it
-  function afterPageRender(){
+  function afterPageRender() {
     applyPlayingHighlight();
     applyAyahDecorations();
-    if (playingAyah && Reciter.rangeActive()){
+    if (playingAyah && Reciter.rangeActive()) {
       beginKaraoke(playingAyah);
       if (audioPrefs.autoScroll) scrollPlayingAyahIntoView();
     }
@@ -416,27 +416,27 @@
   // ON it centers on every ayah change (the mobile/zoomed reading-along mode); OFF keeps
   // the original conservative behavior — only when the ayah is off-screen, so the user's
   // own scrolling is never yanked
-  function scrollPlayingAyahIntoView(){
+  function scrollPlayingAyahIntoView() {
     var el = document.querySelector("#mushafPage .playing");
     if (!el) return;
-    if (audioPrefs.autoScroll){
+    if (audioPrefs.autoScroll) {
       el.scrollIntoView({ block: "center", behavior: "smooth" });
       return;
     }
     var r = el.getBoundingClientRect();
-    if (r.top < 0 || r.bottom > window.innerHeight){
+    if (r.top < 0 || r.bottom > window.innerHeight) {
       el.scrollIntoView({ block: "center", behavior: "smooth" });
     }
   }
 
   // transient inline notice in the always-visible bar head (the panel itself may be closed)
   var audioNoticeTimer = null;
-  function showAudioNotice(msg){
+  function showAudioNotice(msg) {
     var title = document.querySelector(".ab-title");
     if (!title) return;
     title.textContent = "⚠ " + msg;
     clearTimeout(audioNoticeTimer);
-    audioNoticeTimer = setTimeout(function(){
+    audioNoticeTimer = setTimeout(function () {
       title.textContent = "🔊 Mishary Rashid Alafasy";
     }, 4000);
   }
@@ -451,14 +451,14 @@
   // leaves the feature inert (words stay hidden) — never fatal.
   var karaoke = null; // active ayah's reveal state, see beginKaraoke
 
-  function beginKaraoke(pair){
+  function beginKaraoke(pair) {
     karaoke = null;
     if (!audioPrefs.syncReveal) return;
     var list = getPageWordAyahList(currentPage);
     var ords = getPageWordOrdinals(currentPage);
     var lo = -1, hi = -1;
-    for (var i = 0; i < list.length; i++){
-      if (list[i][0] === pair[0] && list[i][1] === pair[1]){ if (lo < 0) lo = i; hi = i; }
+    for (var i = 0; i < list.length; i++) {
+      if (list[i][0] === pair[0] && list[i][1] === pair[1]) { if (lo < 0) lo = i; hi = i; }
     }
     if (lo < 0) return; // playing ayah isn't on the open page — nothing to reveal into
 
@@ -466,14 +466,14 @@
     // so revealing ordinal o must run the cursor through that ordinal's LAST span
     var ordinalEndIdx = [];
     var maxOrdinal = 0;
-    for (var w = lo; w <= hi; w++){
+    for (var w = lo; w <= hi; w++) {
       ordinalEndIdx[ords[w]] = w;
       if (ords[w] > maxOrdinal) maxOrdinal = ords[w];
     }
     // words the cursor already reaches shouldn't replay — start past them
     var cursor = pageCursor[currentPage] || 0;
     var applied = 0;
-    for (var o = 1; o <= maxOrdinal; o++){
+    for (var o = 1; o <= maxOrdinal; o++) {
       if (ordinalEndIdx[o] !== undefined && ordinalEndIdx[o] < cursor) applied = o;
     }
 
@@ -481,7 +481,7 @@
     // (whose data-idx is only the entry's FIRST segment), so the tick can't use idx-range
     // checks — it reveals whole ordinal groups instead
     var spansByOrdinal = [];
-    document.getElementById("mushafPage").querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+    document.getElementById("mushafPage").querySelectorAll(".word, .num, .sajda-tag").forEach(function (el) {
       var idx = +el.dataset.idx;
       if (idx < lo || idx > hi) return;
       var ord = ords[idx];
@@ -492,7 +492,7 @@
     wireKaraokeTick();
     var state = { surah: pair[0], ayah: pair[1], page: currentPage, ordinalEndIdx: ordinalEndIdx, spansByOrdinal: spansByOrdinal, maxOrdinal: maxOrdinal, applied: applied, starts: null };
     karaoke = state;
-    Reciter.timings(pair[0]).then(function(timings){
+    Reciter.timings(pair[0]).then(function (timings) {
       if (karaoke !== state) return; // playback moved on while fetching
       var vt = timings && timings.verses[pair[1] - 1];
       if (!vt || !vt.segments) return;
@@ -504,7 +504,7 @@
       // of the ayah (the tick counts segments, and a duplicate inflates the count).
       var seen = Object.create(null);
       state.starts = [];
-      vt.segments.forEach(function(seg){
+      vt.segments.forEach(function (seg) {
         if (seen[seg[0]]) return;
         seen[seg[0]] = true;
         state.starts.push(absolute ? seg[1] : seg[1] - vt.timestamp_from);
@@ -513,10 +513,10 @@
   }
 
   var karaokeTickWired = false;
-  function wireKaraokeTick(){
+  function wireKaraokeTick() {
     if (karaokeTickWired) return;
     karaokeTickWired = true;
-    Reciter._el().addEventListener("timeupdate", function(){
+    Reciter._el().addEventListener("timeupdate", function () {
       if (!karaoke || !karaoke.starts) return;
       if (karaoke.page !== currentPage) return; // user flipped the page — these data-idx values belong to another page
       var t = this.currentTime * 1000;
@@ -527,13 +527,13 @@
       var endIdx = karaoke.ordinalEndIdx[newMax];
       if (endIdx === undefined) return;
       var cursor = pageCursor[currentPage] || 0;
-      if (cursor >= endIdx + 1){ karaoke.applied = newMax; return; } // the user already revealed past this word
+      if (cursor >= endIdx + 1) { karaoke.applied = newMax; return; } // the user already revealed past this word
       // reveal IN PLACE, one ordinal group at a time — a full renderPage() per word rebuilt
       // the page's innerHTML and made everything on it (previous ayat's gold wash included)
       // blink on every word
       var lastSpan = null;
-      for (var o = karaoke.applied + 1; o <= newMax; o++){
-        (karaoke.spansByOrdinal[o] || []).forEach(function(el){
+      for (var o = karaoke.applied + 1; o <= newMax; o++) {
+        (karaoke.spansByOrdinal[o] || []).forEach(function (el) {
           el.classList.add("revealed");
           if (el.classList.contains("word")) lastSpan = el;
         });
@@ -543,10 +543,10 @@
       // auto-scroll line-follow: keep the LINE being recited inside a comfort band
       // (mushaf mode anchors the whole .mushaf-line, ayat mode the word's own box) —
       // scrolling only fires when the recitation leaves the band, not on every word
-      if (audioPrefs.autoScroll && lastSpan){
+      if (audioPrefs.autoScroll && lastSpan) {
         var anchor = lastSpan.closest(".mushaf-line") || lastSpan.closest(".ayah-word") || lastSpan;
         var ar = anchor.getBoundingClientRect();
-        if (ar.top < innerHeight * 0.15 || ar.bottom > innerHeight * 0.85){
+        if (ar.top < innerHeight * 0.15 || ar.bottom > innerHeight * 0.85) {
           anchor.scrollIntoView({ block: "center", behavior: "smooth" });
         }
       }
@@ -559,23 +559,23 @@
   // startWord + entry index (ayah view). Segments of a waqf-split entry share its ordinal.
   var pageWordOrdinalCache = Object.create(null);
 
-  function getPageWordOrdinals(pageNo){
+  function getPageWordOrdinals(pageNo) {
     if (pageWordOrdinalCache[pageNo]) return pageWordOrdinalCache[pageNo];
     var ords = [];
-    if (pageLinesCache[pageNo]){
-      pageLinesCache[pageNo].forEach(function(line){
+    if (pageLinesCache[pageNo]) {
+      pageLinesCache[pageNo].forEach(function (line) {
         if (line[0] !== "t") return;
-        line[1].forEach(function(run){
-          for (var wi = 0; wi < run[3].length; wi++){
+        line[1].forEach(function (run) {
+          for (var wi = 0; wi < run[3].length; wi++) {
             for (var si = 0; si < run[3][wi].split(" ").length; si++) ords.push(run[2] + wi);
           }
         });
       });
-    } else if (pageAyahBlocksCache[pageNo]){
-      pageAyahBlocksCache[pageNo].forEach(function(block){
+    } else if (pageAyahBlocksCache[pageNo]) {
+      pageAyahBlocksCache[pageNo].forEach(function (block) {
         if (block[0] !== "ayah") return;
         // per-segment expansion matching the lines branch (see getPageWordAyahList)
-        block[4].forEach(function(pair, wi){
+        block[4].forEach(function (pair, wi) {
           for (var si = 0; si < pair[0].split(" ").length; si++) ords.push(block[6] + wi);
         });
       });
@@ -584,9 +584,9 @@
     return ords;
   }
 
-  function wireAudioBar(){
+  function wireAudioBar() {
     var bar = document.getElementById("audioBar");
-    document.getElementById("audioBarToggle").addEventListener("click", function(){
+    document.getElementById("audioBarToggle").addEventListener("click", function () {
       bar.classList.toggle("open");
       // fields follow the current reading position each time the panel is opened (unless a
       // range is already playing — don't yank the controls out from under it)
@@ -594,17 +594,17 @@
       syncFixedBarOffsets(); // the expanded panel changes what the reader must pad for
     });
     var cb = document.getElementById("tapPlayToggle");
-    cb.addEventListener("change", function(e){
+    cb.addEventListener("change", function (e) {
       audioPrefs.tapPlay = e.target.checked;
       saveAudioPrefs();
-      if (!audioPrefs.tapPlay){
+      if (!audioPrefs.tapPlay) {
         Reciter.stop();
         setPlayingAyah(null);
       }
     });
     var sync = document.getElementById("syncRevealToggle");
     sync.checked = audioPrefs.syncReveal;
-    sync.addEventListener("change", function(e){
+    sync.addEventListener("change", function (e) {
       audioPrefs.syncReveal = e.target.checked;
       saveAudioPrefs();
       if (!audioPrefs.syncReveal) karaoke = null;
@@ -613,7 +613,7 @@
     });
     var scroll = document.getElementById("autoScrollToggle");
     scroll.checked = audioPrefs.autoScroll;
-    scroll.addEventListener("change", function(e){
+    scroll.addEventListener("change", function (e) {
       audioPrefs.autoScroll = e.target.checked;
       saveAudioPrefs();
     });
@@ -624,14 +624,14 @@
   // point the range fields at what's currently open: the ayah under the reveal cursor (or
   // the page's first ayah when nothing is revealed yet) through the last ayah of that same
   // surah on this page — "play what I'm reading", not a stale persisted page
-  function syncRangeToReadingPosition(){
+  function syncRangeToReadingPosition() {
     var ayahList = getPageWordAyahList(currentPage);
     if (!ayahList.length) return;
     var cursor = pageCursor[currentPage] || 0;
     var pair = ayahList[Math.min(cursor, ayahList.length - 1)];
     var surah = pair[0], from = pair[1], to = from;
-    for (var i = ayahList.length - 1; i >= 0; i--){
-      if (ayahList[i][0] === surah){ to = ayahList[i][1]; break; }
+    for (var i = ayahList.length - 1; i >= 0; i--) {
+      if (ayahList[i][0] === surah) { to = ayahList[i][1]; break; }
     }
     audioPrefs.surah = surah;
     audioPrefs.from = from;
@@ -640,18 +640,18 @@
     refreshRangeControls();
   }
 
-  function rangeStatus(text){
+  function rangeStatus(text) {
     document.getElementById("rangeStatus").textContent = text;
   }
 
   // reassigned by wireRangeControls once the controls exist — syncRangeToReadingPosition
   // calls it through this indirection
-  var refreshRangeControls = function(){};
+  var refreshRangeControls = function () { };
   // true between a ▶ click and its (possibly navigation-delayed) start — suppresses the
   // updateStatus field re-sync so it can't rewrite the range the user just asked for
   var rangeStartPending = false;
 
-  function wireRangeControls(){
+  function wireRangeControls() {
     var surahSel = document.getElementById("rangeSurah");
     var fromInput = document.getElementById("rangeFrom");
     var toInput = document.getElementById("rangeTo");
@@ -659,23 +659,23 @@
     var repeatModeSel = document.getElementById("rangeRepeatMode");
     var speedSel = document.getElementById("rangeSpeed");
 
-    SURAH_META.forEach(function(s){
+    SURAH_META.forEach(function (s) {
       var opt = document.createElement("option");
       opt.value = String(s[0]);
       opt.textContent = s[0] + ". " + s[2];
       surahSel.appendChild(opt);
     });
-    for (var r = 1; r <= RANGE_REPEAT_MAX; r++){
+    for (var r = 1; r <= RANGE_REPEAT_MAX; r++) {
       repeatSel.appendChild(new Option(String(r), String(r)));
     }
     repeatModeSel.appendChild(new Option("per ayat", "ayah"));
     repeatModeSel.appendChild(new Option("rentang", "range"));
-    [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].forEach(function(sp){
+    [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2].forEach(function (sp) {
       speedSel.appendChild(new Option(String(sp) + "×", String(sp)));
     });
 
     // clamp helper — from/to must stay within the chosen surah's ayah count, from <= to
-    function clampRange(){
+    function clampRange() {
       var count = SURAH_META[audioPrefs.surah - 1][5];
       audioPrefs.from = Math.min(Math.max(1, audioPrefs.from), count);
       audioPrefs.to = Math.min(Math.max(audioPrefs.from, audioPrefs.to), count);
@@ -685,7 +685,7 @@
       toInput.value = String(audioPrefs.to);
     }
 
-    surahSel.addEventListener("change", function(){
+    surahSel.addEventListener("change", function () {
       audioPrefs.surah = parseInt(surahSel.value, 10) || 1;
       // a fresh surah pick means the whole surah, not a clamped leftover from the last one
       audioPrefs.from = 1;
@@ -696,31 +696,31 @@
       // (guarded: never yank the page out from under a running range)
       if (!Reciter.rangeActive()) goToPage(SURAH_META[audioPrefs.surah - 1][6]);
     });
-    fromInput.addEventListener("change", function(){
+    fromInput.addEventListener("change", function () {
       audioPrefs.from = parseInt(fromInput.value, 10) || 1;
       clampRange();
       saveAudioPrefs();
     });
-    toInput.addEventListener("change", function(){
+    toInput.addEventListener("change", function () {
       audioPrefs.to = parseInt(toInput.value, 10) || audioPrefs.from;
       clampRange();
       saveAudioPrefs();
     });
-    repeatSel.addEventListener("change", function(){
+    repeatSel.addEventListener("change", function () {
       audioPrefs.repeat = parseInt(repeatSel.value, 10) || 1;
       saveAudioPrefs();
     });
-    repeatModeSel.addEventListener("change", function(){
+    repeatModeSel.addEventListener("change", function () {
       audioPrefs.repeatMode = repeatModeSel.value === "range" ? "range" : "ayah";
       saveAudioPrefs();
     });
-    speedSel.addEventListener("change", function(){
+    speedSel.addEventListener("change", function () {
       audioPrefs.speed = parseFloat(speedSel.value) || 1;
       Reciter.setSpeed(audioPrefs.speed);
       saveAudioPrefs();
     });
 
-    refreshRangeControls = function(){
+    refreshRangeControls = function () {
       surahSel.value = String(audioPrefs.surah);
       repeatSel.value = String(audioPrefs.repeat);
       repeatModeSel.value = audioPrefs.repeatMode;
@@ -730,12 +730,12 @@
     refreshRangeControls();
     Reciter.setSpeed(audioPrefs.speed);
 
-    document.getElementById("rangePlay").addEventListener("click", function(){
+    document.getElementById("rangePlay").addEventListener("click", function () {
       // gapless playback can take a second or two before the first sound — an impatient
       // second ▶ used to spawn a fresh queue that re-seeked the shared element to the
       // ayah's start, so the opening audibly played twice. ▶ is idempotent now: running
       // range = no-op, paused range = resume. Stop first to restart.
-      if (Reciter.rangeActive()){
+      if (Reciter.rangeActive()) {
         if (Reciter.rangePaused()) Reciter.resumeRange();
         return;
       }
@@ -745,12 +745,12 @@
       // (set 6-11, heard 8-14)
       var surah = audioPrefs.surah, from = audioPrefs.from, to = audioPrefs.to, repeat = audioPrefs.repeat, mode = audioPrefs.repeatMode;
       rangeStartPending = true;
-      function start(){
+      function start() {
         rangeStartPending = false;
         Reciter.startRange(surah, from, to, repeat, mode,
-          function(ayah, rep){
+          function (ayah, rep) {
             setPlayingAyah([surah, ayah]);
-            if (audioPrefs.autoScroll){
+            if (audioPrefs.autoScroll) {
               // the recitation crossing onto another page takes the reader along — the
               // render chain (afterPageRender) picks up highlight, karaoke and centering
               var page = ayahJumpAvailable ? AYAH_PAGE[surah - 1][ayah - 1] : 0;
@@ -759,11 +759,11 @@
             }
             rangeStatus(surah + ":" + ayah + (mode === "range" ? " · putaran " : " · ulangan ") + rep + "/" + repeat);
           },
-          function(){
+          function () {
             setPlayingAyah(null);
             rangeStatus("selesai");
           },
-          function(){
+          function () {
             setPlayingAyah(null);
             rangeStatus("audio gagal — berhenti");
             showAudioNotice("Gagal memuat audio");
@@ -773,28 +773,28 @@
       // karaoke and scroll-follow all key off the CURRENT page) — take the reader there
       // first and start once the page data is in, so the very first ayah syncs too
       var startPage = ayahJumpAvailable ? AYAH_PAGE[surah - 1][from - 1] : 0;
-      if (startPage && startPage !== currentPage){
+      if (startPage && startPage !== currentPage) {
         goToPage(startPage);
-        loadPageLines(startPage).then(function(){
+        loadPageLines(startPage).then(function () {
           if (currentPage === startPage) start();
           else rangeStartPending = false; // user navigated elsewhere — un-suppress the re-sync
-        }).catch(function(){ rangeStartPending = false; });
+        }).catch(function () { rangeStartPending = false; });
       } else {
         start();
       }
     });
-    document.getElementById("rangePause").addEventListener("click", function(){
-      if (Reciter.rangePaused()){ Reciter.resumeRange(); rangeStatus("lanjut…"); }
-      else if (Reciter.rangeActive()){ Reciter.pauseRange(); rangeStatus("jeda"); }
+    document.getElementById("rangePause").addEventListener("click", function () {
+      if (Reciter.rangePaused()) { Reciter.resumeRange(); rangeStatus("lanjut…"); }
+      else if (Reciter.rangeActive()) { Reciter.pauseRange(); rangeStatus("jeda"); }
     });
-    document.getElementById("rangeReplay").addEventListener("click", function(){
+    document.getElementById("rangeReplay").addEventListener("click", function () {
       // Mamah-mode: paused mid-ayah, wants to hear that ayah again from the top —
       // re-seeks to the current ayah's start and plays (also fine mid-play)
       if (!Reciter.rangeActive()) return;
       Reciter.replayRangeAyah();
       rangeStatus("mengulang ayat ini…");
     });
-    document.getElementById("rangeStop").addEventListener("click", function(){
+    document.getElementById("rangeStop").addEventListener("click", function () {
       Reciter.stopRange();
       setPlayingAyah(null);
       rangeStatus("");
@@ -805,14 +805,14 @@
   // Only classes we have a color for become spans (see .tj rules in style.css); anything else
   // the API might introduce (custom-*) keeps its text, uncolored.
   var TAJWEED_RULES = {
-    ham_wasl:1, slnt:1, laam_shamsiyah:1,
-    madda_normal:1, madda_permissible:1, madda_necessary:1,
-    madda_obligatory_monfasel:1, madda_obligatory_mottasel:1,
-    qalaqah:1, ikhafa:1, ikhafa_shafawi:1, idgham_shafawi:1,
-    idgham_ghunnah:1, idgham_wo_ghunnah:1, iqlab:1, ghunnah:1
+    ham_wasl: 1, slnt: 1, laam_shamsiyah: 1,
+    madda_normal: 1, madda_permissible: 1, madda_necessary: 1,
+    madda_obligatory_monfasel: 1, madda_obligatory_mottasel: 1,
+    qalaqah: 1, ikhafa: 1, ikhafa_shafawi: 1, idgham_shafawi: 1,
+    idgham_ghunnah: 1, idgham_wo_ghunnah: 1, iqlab: 1, ghunnah: 1
   };
 
-  function escapeHtml(s){
+  function escapeHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
 
@@ -820,18 +820,18 @@
   // newer documented API uses — accept both so a provider-side rename doesn't strip colors.
   var TAJWEED_TAG = /<(rule|tajweed) class=([\w-]+)>|<\/(rule|tajweed)>/g;
 
-  function tajweedToHtml(str){
+  function tajweedToHtml(str) {
     var out = "";
     var stack = []; // emitted class names (null entries = uncolored depth, keeps nesting balanced)
     var pos = 0;
     var m;
     TAJWEED_TAG.lastIndex = 0;
-    while ((m = TAJWEED_TAG.exec(str))){
+    while ((m = TAJWEED_TAG.exec(str))) {
       if (m.index > pos) out += escapeHtml(str.slice(pos, m.index));
       pos = m.index + m[0].length;
-      if (m[3]){
+      if (m[3]) {
         if (stack.length && stack.pop()) out += "</span>";
-      } else if (TAJWEED_RULES[m[2]]){
+      } else if (TAJWEED_RULES[m[2]]) {
         out += '<span class="tj ' + m[2] + '">';
         stack.push(m[2]);
       } else {
@@ -839,7 +839,7 @@
       }
     }
     if (pos < str.length) out += escapeHtml(str.slice(pos));
-    while (stack.length){ if (stack.pop()) out += "</span>"; }
+    while (stack.length) { if (stack.pop()) out += "</span>"; }
     return out;
   }
 
@@ -849,29 +849,29 @@
   // spaces/ZWNJ and return per-segment HTML only when the counts line up with the plain
   // segments; null otherwise, so the caller renders the plain text for that entry (a handful
   // of words per page at most, imperceptible).
-  function tajweedSegments(tj, segCount){
+  function tajweedSegments(tj, segCount) {
     if (!tj) return null;
     var parts = [];
     var depth = 0;
     var cur = "";
-    for (var i = 0; i < tj.length; i++){
+    for (var i = 0; i < tj.length; i++) {
       var ch = tj.charAt(i);
-      if (ch === "<"){
+      if (ch === "<") {
         var close = tj.indexOf(">", i);
         if (close === -1) return null; // malformed — let the caller fall back
         var tag = tj.slice(i, close + 1);
         i = close;
-        if (/^<(rule|tajweed) class=[\w-]+>$/.test(tag)){
+        if (/^<(rule|tajweed) class=[\w-]+>$/.test(tag)) {
           depth++;
           cur += tag;
-        } else if (/^<\/(rule|tajweed)>$/.test(tag)){
+        } else if (/^<\/(rule|tajweed)>$/.test(tag)) {
           depth = Math.max(0, depth - 1);
           cur += tag;
         }
         // any other tag is dropped — only tajweedToHtml's own whitelisted spans ever enter HTML
         continue;
       }
-      if (depth === 0 && (ch === " " || ch === "\u200c")){
+      if (depth === 0 && (ch === " " || ch === "\u200c")) {
         parts.push(cur);
         cur = "";
         continue;
@@ -893,31 +893,31 @@
   // surah's ayah 1. The page's FIRST verse is exempt (it may legitimately continue the
   // previous page mid-stream). One forced refetch on a detected gap; if the API itself is
   // currently missing the verse, the retry's response is accepted as-is.
-  function versesHaveGap(verses){
+  function versesHaveGap(verses) {
     var seen = Object.create(null);
     var list = [];
-    verses.forEach(function(v){
+    verses.forEach(function (v) {
       var colon = v.verse_key.indexOf(":");
       var pair = [+v.verse_key.slice(0, colon), +v.verse_key.slice(colon + 1)];
       var key = pair[0] + ":" + pair[1];
-      if (!seen[key]){ seen[key] = 1; list.push(pair); }
+      if (!seen[key]) { seen[key] = 1; list.push(pair); }
     });
-    list.sort(function(a, b){ return a[0] - b[0] || a[1] - b[1]; });
-    for (var i = 1; i < list.length; i++){
+    list.sort(function (a, b) { return a[0] - b[0] || a[1] - b[1]; });
+    for (var i = 1; i < list.length; i++) {
       var prev = list[i - 1], cur = list[i];
-      if (prev[0] === cur[0]){
+      if (prev[0] === cur[0]) {
         if (cur[1] !== prev[1] + 1) return true;
-      } else if (cur[0] !== prev[0] + 1 || cur[1] !== 1 || prev[1] !== SURAH_META[prev[0] - 1][5]){
+      } else if (cur[0] !== prev[0] + 1 || cur[1] !== 1 || prev[1] !== SURAH_META[prev[0] - 1][5]) {
         return true;
       }
     }
     return false;
   }
 
-  function loadPageWithHeal(pageNo, loader){
-    return loader(pageNo).then(function(verses){
+  function loadPageWithHeal(pageNo, loader) {
+    return loader(pageNo).then(function (verses) {
       if (!versesHaveGap(verses)) return verses;
-      return loader(pageNo, true).catch(function(){ return verses; });
+      return loader(pageNo, true).catch(function () { return verses; });
     });
   }
 
@@ -928,15 +928,15 @@
   var pageLinesCache = Object.create(null);
   var pageLoadPromises = Object.create(null); // pageNo -> in-flight promise, dedupes concurrent loads
 
-  function loadPageLines(pageNo){
+  function loadPageLines(pageNo) {
     if (pageLinesCache[pageNo]) return Promise.resolve(pageLinesCache[pageNo]);
     if (pageLoadPromises[pageNo]) return pageLoadPromises[pageNo];
-    var promise = loadPageWithHeal(pageNo, QuranApi.loadPage).then(function(verses){
+    var promise = loadPageWithHeal(pageNo, QuranApi.loadPage).then(function (verses) {
       var lines = PageLayout.buildPageLines(pageNo, verses, SURAH_META);
       pageLinesCache[pageNo] = lines;
       delete pageLoadPromises[pageNo];
       return lines;
-    }).catch(function(err){
+    }).catch(function (err) {
       delete pageLoadPromises[pageNo];
       throw err;
     });
@@ -950,15 +950,15 @@
   var pageAyahBlocksCache = Object.create(null);
   var pageAyahBlockLoadPromises = Object.create(null);
 
-  function loadPageAyahBlocks(pageNo){
+  function loadPageAyahBlocks(pageNo) {
     if (pageAyahBlocksCache[pageNo]) return Promise.resolve(pageAyahBlocksCache[pageNo]);
     if (pageAyahBlockLoadPromises[pageNo]) return pageAyahBlockLoadPromises[pageNo];
-    var promise = loadPageWithHeal(pageNo, QuranApi.loadPage).then(function(verses){
+    var promise = loadPageWithHeal(pageNo, QuranApi.loadPage).then(function (verses) {
       var blocks = PageLayout.buildAyahBlocks(pageNo, verses, SURAH_META);
       pageAyahBlocksCache[pageNo] = blocks;
       delete pageAyahBlockLoadPromises[pageNo];
       return blocks;
-    }).catch(function(err){
+    }).catch(function (err) {
       delete pageAyahBlockLoadPromises[pageNo];
       throw err;
     });
@@ -972,28 +972,28 @@
   // which verses/words come back or their order), so one reveal cursor works across both view
   // modes and this can source its word list from whichever of the two page caches happens to
   // already be loaded, preferring pageLinesCache since it was the original.
-  function getPageWordAyahList(pageNo){
+  function getPageWordAyahList(pageNo) {
     if (pageWordAyahCache[pageNo]) return pageWordAyahCache[pageNo];
     var list = [];
-    if (pageLinesCache[pageNo]){
-      pageLinesCache[pageNo].forEach(function(line){
-        if (line[0] === "t"){
-          line[1].forEach(function(run){
+    if (pageLinesCache[pageNo]) {
+      pageLinesCache[pageNo].forEach(function (line) {
+        if (line[0] === "t") {
+          line[1].forEach(function (run) {
             var surah = run[0], ayah = run[1];
-            run[3].forEach(function(wordEntry){
+            run[3].forEach(function (wordEntry) {
               for (var i = 0; i < wordEntry.split(" ").length; i++) list.push([surah, ayah]);
             });
           });
         }
       });
-    } else if (pageAyahBlocksCache[pageNo]){
-      pageAyahBlocksCache[pageNo].forEach(function(block){
+    } else if (pageAyahBlocksCache[pageNo]) {
+      pageAyahBlocksCache[pageNo].forEach(function (block) {
         if (block[0] !== "ayah") return;
         // per-SEGMENT expansion, exactly like the lines branch above — the two branches
         // must produce IDENTICAL lists: the reveal cursor and data-idx are page-wide and
         // shared across view modes, and a page first loaded in ayah view used to build a
         // shorter (per-entry) list that silently misaligned everything after a mode switch
-        block[4].forEach(function(pair){
+        block[4].forEach(function (pair) {
           for (var i = 0; i < pair[0].split(" ").length; i++) list.push([block[1], block[2]]);
         });
       });
@@ -1004,21 +1004,21 @@
     return list;
   }
 
-  function countPageWords(pageNo){
+  function countPageWords(pageNo) {
     if (pageWordCountCache[pageNo] !== undefined) return pageWordCountCache[pageNo];
     var total = getPageWordAyahList(pageNo).length;
     if (total) pageWordCountCache[pageNo] = total; // don't cache 0 from a not-yet-loaded page
     return total;
   }
 
-  function pageSurahNumbers(pageNo){
+  function pageSurahNumbers(pageNo) {
     var linesOnPage = pageLinesCache[pageNo] || [];
     var nums = [];
-    linesOnPage.forEach(function(line){
-      if (line[0] === "h"){
+    linesOnPage.forEach(function (line) {
+      if (line[0] === "h") {
         if (nums.indexOf(line[1]) === -1) nums.push(line[1]);
-      } else if (line[0] === "t"){
-        line[1].forEach(function(run){
+      } else if (line[0] === "t") {
+        line[1].forEach(function (run) {
           if (nums.indexOf(run[0]) === -1) nums.push(run[0]);
         });
       }
@@ -1031,15 +1031,15 @@
   // "Al-A’raf"), collapses doubled vowels ("Al-A'raaf" → "alaraf") and merges e→i, o→u
   // ("Yaseen" → "yasin"). Both the dataset string and the query fold, so the aggressive
   // normalization stays symmetric and safe.
-  function foldLatin(s){
+  function foldLatin(s) {
     return s.toLowerCase().replace(/[\s\-\u2018\u2019']/g, "")
       .replace(/([aeiou])\1+/g, "$1").replace(/e/g, "i").replace(/o/g, "u");
   }
 
-  function renderSidebar(){
+  function renderSidebar() {
     var container = document.getElementById("surahList");
     container.innerHTML = "";
-    SURAH_META.forEach(function(s){
+    SURAH_META.forEach(function (s) {
       var number = s[0], nameAr = s[1], nameEn = s[2], nameTranslation = s[3], isMeccan = s[4], ayahCount = s[5], firstPage = s[6];
       var item = document.createElement("div");
       item.className = "surah-item";
@@ -1053,14 +1053,14 @@
       item.innerHTML =
         '<div class="surah-num">' + number + '</div>' +
         '<div class="surah-info">' +
-          '<div class="name-ar">' + nameAr + '</div>' +
-          '<div class="name-lat">' +
-            '<span>' + nameEn + '</span>' +
-            '<span class="badge">' + (isMeccan ? "Makkiyah" : "Madaniyah") + '</span>' +
-          '</div>' +
+        '<div class="name-ar">' + nameAr + '</div>' +
+        '<div class="name-lat">' +
+        '<span>' + nameEn + '</span>' +
+        '<span class="badge">' + (isMeccan ? "Makkiyah" : "Madaniyah") + '</span>' +
+        '</div>' +
         '</div>' +
         '<button class="surah-go" type="button" title="Langsung ke ayat 1">Go</button>';
-      item.addEventListener("click", function(){
+      item.addEventListener("click", function () {
         // a row tap only PINS the ayah-jump target — navigation is Go (ayat 1) or ➔ (typed
         // ayat), so the sidebar stays open for the ayat to be chosen
         ayahJumpPinned = number;
@@ -1068,7 +1068,7 @@
       });
       // Go = straight to ayat 1 with the full jump treatment (reveal-through + scroll +
       // flash)
-      item.querySelector(".surah-go").addEventListener("click", function(ev){
+      item.querySelector(".surah-go").addEventListener("click", function (ev) {
         ev.stopPropagation();
         ayahJumpPinned = null;
         goToAyah(number, 1, firstPage);
@@ -1078,7 +1078,7 @@
     });
   }
 
-  document.getElementById("surahSearch").addEventListener("input", function(e){
+  document.getElementById("surahSearch").addEventListener("input", function (e) {
     var q = e.target.value.trim().toLowerCase();
     var qFold = foldLatin(q);
     // trailing-letter variants — the dataset's "al-baqara"/"al-kahf"-style names vs the
@@ -1086,20 +1086,20 @@
     var variants = [qFold];
     if (/[hi]$/.test(qFold) && qFold.length > 2) variants.push(qFold.slice(0, -1));
     var hits = [], exacts = [];
-    document.querySelectorAll(".surah-item").forEach(function(el){
+    document.querySelectorAll(".surah-item").forEach(function (el) {
       var alt = el.dataset.searchAlt;
       var hit = el.dataset.search.indexOf(q) !== -1 ||
         (qFold && alt.indexOf(qFold) !== -1) ||
-        variants.slice(1).some(function(v){ return alt.indexOf(v) !== -1; });
-      if (!hit){ el.style.display = "none"; return; }
+        variants.slice(1).some(function (v) { return alt.indexOf(v) !== -1; });
+      if (!hit) { el.style.display = "none"; return; }
       hits.push(el);
       // "annas" must land on An-Nas, not the substring-earlier An-Nasr — an exact folded
       // name match outranks substring ones whenever any exist
       if (variants.indexOf(el.dataset.searchName) !== -1) exacts.push(el);
     });
     var winners = exacts.length ? exacts : hits;
-    document.querySelectorAll(".surah-item").forEach(function(el){ el.style.display = "none"; });
-    winners.forEach(function(el){ el.style.display = "flex"; });
+    document.querySelectorAll(".surah-item").forEach(function (el) { el.style.display = "none"; });
+    winners.forEach(function (el) { el.style.display = "flex"; });
     ayahJumpPinned = null; // typing re-filters — the pin gives way to the match again
     refreshAyahJumpTarget();
   });
@@ -1117,31 +1117,31 @@
   if (!ayahJumpAvailable) document.getElementById("ayahJumpRow").style.display = "none";
   var ayahJumpPinned = null; // surah picked by tapping its row — overrides filter/active
 
-  function ayahJumpTargetSurah(){
+  function ayahJumpTargetSurah() {
     if (ayahJumpPinned) return ayahJumpPinned;
     // empty search → the surah open on the page (not "first list item": an unfiltered
     // list always starts at Al-Fatihah, which made the label show 1. Al-Faatihah while
     // reading Al-A'raaf — exactly the stale-target report)
     var q = document.getElementById("surahSearch").value.trim();
-    if (!q){
+    if (!q) {
       var active = document.querySelector(".surah-item.active");
       return active ? +active.dataset.number : null;
     }
     var first = null;
-    document.querySelectorAll(".surah-item").forEach(function(el){
+    document.querySelectorAll(".surah-item").forEach(function (el) {
       if (el.style.display !== "none" && first === null) first = +el.dataset.number;
     });
     return first; // null when the filter matches nothing — no silent wrong target
   }
 
-  function refreshAyahJumpTarget(){
+  function refreshAyahJumpTarget() {
     if (!ayahJumpAvailable) return;
     var s = ayahJumpTargetSurah();
     document.getElementById("ayahJumpTarget").textContent =
       s ? SURAH_META[s - 1][0] + ". " + SURAH_META[s - 1][2] : "";
   }
 
-  function jumpToTypedAyah(){
+  function jumpToTypedAyah() {
     if (!ayahJumpAvailable) return;
     var s = ayahJumpTargetSurah();
     var a = parseInt(document.getElementById("ayahJumpInput").value, 10);
@@ -1152,17 +1152,17 @@
   }
 
   document.getElementById("ayahJumpBtn").addEventListener("click", jumpToTypedAyah);
-  document.getElementById("ayahJumpInput").addEventListener("keydown", function(e){
+  document.getElementById("ayahJumpInput").addEventListener("keydown", function (e) {
     if (e.key === "Enter") jumpToTypedAyah();
   });
 
-  function goToAyah(surah, ayah, page){
+  function goToAyah(surah, ayah, page) {
     goToPage(page);
-    loadPageLines(page).then(function(){
+    loadPageLines(page).then(function () {
       if (currentPage !== page) return; // user navigated elsewhere before this resolved
       var ayahList = getPageWordAyahList(page);
       var lastIdx = -1;
-      for (var i = 0; i < ayahList.length; i++){
+      for (var i = 0; i < ayahList.length; i++) {
         if (ayahList[i][0] === surah && ayahList[i][1] === ayah) lastIdx = i;
       }
       if (lastIdx === -1) return;
@@ -1175,46 +1175,46 @@
 
   // gold wash on the target ayah's spans (mushaf mode) or block (ayah mode) + center it —
   // same span-finding logic as applyPlayingHighlight
-  function flashAyah(surah, ayah){
+  function flashAyah(surah, ayah) {
     var container = document.getElementById("mushafPage");
     var block = container.querySelector('.ayah-block[data-surah="' + surah + '"][data-ayah="' + ayah + '"]');
     var first = null;
-    if (block){
+    if (block) {
       block.classList.add("flash");
       first = block;
     } else {
       var list = getPageWordAyahList(currentPage);
       var lo = -1, hi = -1;
-      for (var i = 0; i < list.length; i++){
-        if (list[i][0] === surah && list[i][1] === ayah){ if (lo < 0) lo = i; hi = i; }
+      for (var i = 0; i < list.length; i++) {
+        if (list[i][0] === surah && list[i][1] === ayah) { if (lo < 0) lo = i; hi = i; }
       }
-      container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
+      container.querySelectorAll(".word, .num, .sajda-tag").forEach(function (el) {
         var idx = +el.dataset.idx;
-        if (idx >= lo && idx <= hi){ el.classList.add("flash"); if (!first) first = el; }
+        if (idx >= lo && idx <= hi) { el.classList.add("flash"); if (!first) first = el; }
       });
     }
     if (first) first.scrollIntoView({ block: "center" });
-    setTimeout(function(){
-      container.querySelectorAll(".flash").forEach(function(el){ el.classList.remove("flash"); });
+    setTimeout(function () {
+      container.querySelectorAll(".flash").forEach(function (el) { el.classList.remove("flash"); });
     }, 1600);
   }
 
-  function highlightActiveSurah(surahNumber){
-    document.querySelectorAll(".surah-item").forEach(function(el){
+  function highlightActiveSurah(surahNumber) {
+    document.querySelectorAll(".surah-item").forEach(function (el) {
       el.classList.toggle("active", +el.dataset.number === surahNumber);
     });
     refreshAyahJumpTarget(); // empty-search target follows the open page
   }
 
   // ---------------- sidebar tabs (Surah / Markah) + Markah sub-tabs (Markah / Catatan) ----------------
-  document.getElementById("tabSurah").addEventListener("click", function(){ switchSidebarTab("surah"); });
-  document.getElementById("tabBookmarks").addEventListener("click", function(){ switchSidebarTab("bookmarks"); });
-  document.getElementById("subtabBookmarks").addEventListener("click", function(){ switchMarkahSubTab("bookmarks"); });
-  document.getElementById("subtabNotes").addEventListener("click", function(){ switchMarkahSubTab("notes"); });
+  document.getElementById("tabSurah").addEventListener("click", function () { switchSidebarTab("surah"); });
+  document.getElementById("tabBookmarks").addEventListener("click", function () { switchSidebarTab("bookmarks"); });
+  document.getElementById("subtabBookmarks").addEventListener("click", function () { switchMarkahSubTab("bookmarks"); });
+  document.getElementById("subtabNotes").addEventListener("click", function () { switchMarkahSubTab("notes"); });
 
   var markahSubTab = "bookmarks";
 
-  function switchMarkahSubTab(sub){
+  function switchMarkahSubTab(sub) {
     markahSubTab = sub;
     var isBm = sub === "bookmarks";
     document.getElementById("subtabBookmarks").classList.toggle("active", isBm);
@@ -1223,7 +1223,7 @@
     document.getElementById("noteList").style.display = isBm ? "none" : "block";
   }
 
-  function switchSidebarTab(tab){
+  function switchSidebarTab(tab) {
     var isSurah = tab === "surah";
     document.getElementById("tabSurah").classList.toggle("active", isSurah);
     document.getElementById("tabBookmarks").classList.toggle("active", !isSurah);
@@ -1237,56 +1237,93 @@
 
   // ---------------- bookmarks — per-ayah, saved to this device/browser only, via localStorage ----------------
   var BOOKMARKS_KEY = "mushafHifzBookmarks";
+  var V_1_1 = "v1.1";
 
-  function loadBookmarks(){
-    try{
-      var arr = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || "[]");
+  function loadBookmarks() {
+    try {
+      let bookmarksKey = BOOKMARKS_KEY + "-" + V_1_1;
+      let raw = localStorage.getItem(bookmarksKey);
+      var arr;
+      if (raw) {
+        arr = loadBookmarksV_1_1(raw);
+      } else {
+        arr = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) || "[]");
+      }
       if (!Array.isArray(arr)) return [];
-      return arr.filter(function(b){
+      return arr.filter(function (b) {
         return b && Number.isInteger(b.surah) && Number.isInteger(b.ayah) && Number.isInteger(b.page) &&
           b.surah >= 1 && b.surah <= 114 && b.page >= 1 && b.page <= TOTAL_PAGES;
       });
-    } catch(e){
+    } catch (e) {
       return [];
     }
   }
 
-  function saveBookmarks(){
-    try{ localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks)); } catch(e){ /* storage unavailable (private mode/full) — bookmark just won't persist */ }
+  function loadBookmarksV_1_1(raw) {
+    let localBookMarks = JSON.parse(raw);
+    return localBookMarks.arr;
+  }
+
+  function saveBookmarks() {
+    let updatedData = {};
+    updatedData.arr = bookmarks;
+    updatedData.lastUpdated = Date.now();
+    let bookmarksKey = BOOKMARKS_KEY + "-" + V_1_1;
+    // try { localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks)); } catch (e) { /* storage unavailable (private mode/full) — bookmark just won't persist */ }
+    try { localStorage.setItem(bookmarksKey, JSON.stringify(updatedData)); } catch (e) { /* storage unavailable (private mode/full) — bookmark just won't persist */ }
+    window.sinkron_saveSettingsToCloud(bookmarksKey, updatedData);
   }
 
   var bookmarks = loadBookmarks();
 
-  function findBookmarkIndex(surah, ayah){
-    for (var i = 0; i < bookmarks.length; i++){
+  async function startBookmarkCloudSync(userId) {
+      let bookmarksKey = BOOKMARKS_KEY + "-" + V_1_1;
+      window.sinkron_startSettingCloudSync(userId, bookmarksKey, loadBookmarksFromCloud);    
+  }
+
+  window.app_startBookmarkCloudSync = startBookmarkCloudSync;
+
+  async function loadBookmarksFromCloud(cloudBookmarks) {
+    let arr = cloudBookmarks.arr;
+    if (!Array.isArray(arr)) return [];
+    arr.filter(function (b) {
+      return b && Number.isInteger(b.surah) && Number.isInteger(b.ayah) && Number.isInteger(b.page) &&
+        b.surah >= 1 && b.surah <= 114 && b.page >= 1 && b.page <= TOTAL_PAGES;
+    });
+    bookmarks = arr;
+    renderBookmarkList();
+  }
+
+  function findBookmarkIndex(surah, ayah) {
+    for (var i = 0; i < bookmarks.length; i++) {
       if (bookmarks[i].surah === surah && bookmarks[i].ayah === ayah) return i;
     }
     return -1;
   }
 
-  function isBookmarked(surah, ayah){ return findBookmarkIndex(surah, ayah) !== -1; }
+  function isBookmarked(surah, ayah) { return findBookmarkIndex(surah, ayah) !== -1; }
 
-  function toggleBookmark(surah, ayah, page){
+  function toggleBookmark(surah, ayah, page) {
     var idx = findBookmarkIndex(surah, ayah);
     if (idx === -1) bookmarks.push({ surah: surah, ayah: ayah, page: page });
     else bookmarks.splice(idx, 1);
-    bookmarks.sort(function(a, b){ return a.surah - b.surah || a.ayah - b.ayah; });
+    bookmarks.sort(function (a, b) { return a.surah - b.surah || a.ayah - b.ayah; });
     saveBookmarks();
     renderBookmarkList();
   }
 
   // jump to a bookmarked ayah and reveal the page up through it (not hidden/blurred) —
   // same linear reveal-cursor the rest of the app uses, just pre-positioned past this ayah.
-  function goToBookmark(bm){
+  function goToBookmark(bm) {
     goToPage(bm.page);
-    loadPageLines(bm.page).then(function(){
+    loadPageLines(bm.page).then(function () {
       if (currentPage !== bm.page) return; // user navigated elsewhere before this resolved
       var ayahList = getPageWordAyahList(bm.page);
       var lastIdx = -1;
-      for (var i = 0; i < ayahList.length; i++){
+      for (var i = 0; i < ayahList.length; i++) {
         if (ayahList[i][0] === bm.surah && ayahList[i][1] === bm.ayah) lastIdx = i;
       }
-      if (lastIdx !== -1){
+      if (lastIdx !== -1) {
         pageCursor[bm.page] = lastIdx + 1;
         renderPage(bm.page, true);
       }
@@ -1294,32 +1331,32 @@
     if (window.innerWidth <= 760) shell.classList.add("collapsed");
   }
 
-  function renderBookmarkList(){
+  function renderBookmarkList() {
     var countEl = document.getElementById("bookmarkCount");
     if (countEl) countEl.textContent = bookmarks.length ? bookmarks.length : "";
     var container = document.getElementById("bookmarkList");
     if (!container) return;
-    if (!bookmarks.length){
+    if (!bookmarks.length) {
       container.innerHTML = '<div class="bookmark-empty">Belum ada ayat ditandai.<br>Tahan sebuah kata untuk menandai ayatnya.</div>';
       return;
     }
     container.innerHTML = "";
-    bookmarks.forEach(function(bm){
+    bookmarks.forEach(function (bm) {
       var surahName = SURAH_META[bm.surah - 1][1];
       var item = document.createElement("div");
       item.className = "bookmark-item";
       item.innerHTML =
         '<div class="bm-ayah">' + bm.ayah + '</div>' +
         '<div class="bm-info">' +
-          '<div class="bm-surah">' + surahName + ' <span class="bm-lat">' + SURAH_META[bm.surah - 1][2] + '</span></div>' +
-          '<div class="bm-meta">Ayat ' + bm.ayah + ' · Halaman ' + bm.page + '</div>' +
+        '<div class="bm-surah">' + surahName + ' <span class="bm-lat">' + SURAH_META[bm.surah - 1][2] + '</span></div>' +
+        '<div class="bm-meta">Ayat ' + bm.ayah + ' · Halaman ' + bm.page + '</div>' +
         '</div>' +
         '<button class="bm-remove" type="button" title="Hapus markah">✕</button>';
-      item.addEventListener("click", function(e){
+      item.addEventListener("click", function (e) {
         if (e.target.closest(".bm-remove")) return;
         goToBookmark(bm);
       });
-      item.querySelector(".bm-remove").addEventListener("click", function(e){
+      item.querySelector(".bm-remove").addEventListener("click", function (e) {
         e.stopPropagation();
         toggleBookmark(bm.surah, bm.ayah, bm.page);
       });
@@ -1329,46 +1366,46 @@
 
   // the "Catatan" sub-tab of the Markah panel — whole-ayah notes and word-range notes
   // together, reading order (surah, ayah, then range start), jumping straight to the ayah
-  function renderNoteList(){
+  function renderNoteList() {
     var entries = [];
-    Object.keys(notes).forEach(function(key){
+    Object.keys(notes).forEach(function (key) {
       var p = key.split(":");
       entries.push({ s: +p[0], a: +p[1], w1: null, text: notes[key] });
     });
-    Object.keys(wordNotes).forEach(function(key){
+    Object.keys(wordNotes).forEach(function (key) {
       var p = key.split(":");
       var r = p[2].split("-");
       entries.push({ s: +p[0], a: +p[1], w1: +r[0], w2: +r[1], text: wordNotes[key] });
     });
-    entries.sort(function(x, y){ return x.s - y.s || x.a - y.a || (x.w1 || 0) - (y.w1 || 0); });
+    entries.sort(function (x, y) { return x.s - y.s || x.a - y.a || (x.w1 || 0) - (y.w1 || 0); });
     var countEl = document.getElementById("noteCount");
     if (countEl) countEl.textContent = entries.length || "";
     var container = document.getElementById("noteList");
     if (!container) return;
-    if (!entries.length){
+    if (!entries.length) {
       container.innerHTML = '<div class="bookmark-empty">Belum ada catatan.<br>Tahan sebuah kata/ayat, lalu pilih 📝 Catatan.</div>';
       return;
     }
     container.innerHTML = "";
-    entries.forEach(function(entry){
+    entries.forEach(function (entry) {
       var page = AYAH_PAGE[entry.s - 1][entry.a - 1];
       var item = document.createElement("div");
       item.className = "bookmark-item note-item";
       item.innerHTML =
         '<div class="bm-ayah">' + entry.a + '</div>' +
         '<div class="bm-info">' +
-          '<div class="bm-surah">' + SURAH_META[entry.s - 1][1] + ' <span class="bm-lat">' + SURAH_META[entry.s - 1][2] + '</span></div>' +
-          '<div class="note-preview">' + escapeHtml(entry.text) + '</div>' +
-          '<div class="bm-meta">Ayat ' + entry.a +
-            (entry.w1 !== null ? ' · kata ' + entry.w1 + '-' + entry.w2 : '') +
-            ' · Halaman ' + page + '</div>' +
+        '<div class="bm-surah">' + SURAH_META[entry.s - 1][1] + ' <span class="bm-lat">' + SURAH_META[entry.s - 1][2] + '</span></div>' +
+        '<div class="note-preview">' + escapeHtml(entry.text) + '</div>' +
+        '<div class="bm-meta">Ayat ' + entry.a +
+        (entry.w1 !== null ? ' · kata ' + entry.w1 + '-' + entry.w2 : '') +
+        ' · Halaman ' + page + '</div>' +
         '</div>' +
         '<button class="bm-remove" type="button" title="Hapus catatan">✕</button>';
-      item.addEventListener("click", function(e){
+      item.addEventListener("click", function (e) {
         if (e.target.closest(".bm-remove")) return;
         goToAyah(entry.s, entry.a, page);
       });
-      item.querySelector(".bm-remove").addEventListener("click", function(e){
+      item.querySelector(".bm-remove").addEventListener("click", function (e) {
         e.stopPropagation();
         if (entry.w1 !== null) setWordNote(entry.s, entry.a, entry.w1, entry.w2, null); // re-renders this list
         else setNote(entry.s, entry.a, null);
@@ -1387,14 +1424,14 @@
   // must match the .hl-1..hl-4 backgrounds in style.css (kuning, hijau, biru, pink)
   var HL_SWATCHES = ["#F7D64A", "#8FD98F", "#7EC8F2", "#F5A8D0"];
 
-  function ayahKey(surah, ayah){ return surah + ":" + ayah; }
+  function ayahKey(surah, ayah) { return surah + ":" + ayah; }
 
-  function loadAnnotationMap(key, isValidValue){
-    try{
+  function loadAnnotationMap(key, isValidValue) {
+    try {
       var obj = JSON.parse(localStorage.getItem(key) || "{}");
       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
       var out = {};
-      for (var k in obj){
+      for (var k in obj) {
         var parts = k.split(":");
         if (parts.length !== 2) continue;
         var s = +parts[0], a = +parts[1];
@@ -1402,32 +1439,32 @@
         if (isValidValue(obj[k])) out[k] = obj[k];
       }
       return out;
-    } catch(e){
+    } catch (e) {
       return {};
     }
   }
 
-  function validHighlightColor(v){
+  function validHighlightColor(v) {
     return v == null || (Number.isInteger(v) && v >= 1 && v <= HIGHLIGHT_COLORS);
   }
 
-  var highlights = loadAnnotationMap(HIGHLIGHTS_KEY, function(v){
+  var highlights = loadAnnotationMap(HIGHLIGHTS_KEY, function (v) {
     return v && typeof v === "object" && validHighlightColor(v.ar) && validHighlightColor(v.tr);
   });
 
-  var notes = loadAnnotationMap(NOTES_KEY, function(v){
+  var notes = loadAnnotationMap(NOTES_KEY, function (v) {
     return typeof v === "string" && v.length > 0 && v.length <= 2000;
   });
 
-  function saveHighlights(){
-    try{ localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(highlights)); } catch(e){ /* storage unavailable (private mode/full) — just won't persist */ }
+  function saveHighlights() {
+    try { localStorage.setItem(HIGHLIGHTS_KEY, JSON.stringify(highlights)); } catch (e) { /* storage unavailable (private mode/full) — just won't persist */ }
   }
 
-  function saveNotes(){
-    try{ localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch(e){ /* storage unavailable — just won't persist */ }
+  function saveNotes() {
+    try { localStorage.setItem(NOTES_KEY, JSON.stringify(notes)); } catch (e) { /* storage unavailable — just won't persist */ }
   }
 
-  function setHighlight(surah, ayah, target, color){ // target "ar"|"tr"; color 1..4, or null to clear that side
+  function setHighlight(surah, ayah, target, color) { // target "ar"|"tr"; color 1..4, or null to clear that side
     var key = ayahKey(surah, ayah);
     var h = highlights[key] || {};
     h[target] = color;
@@ -1437,9 +1474,9 @@
     applyAyahDecorations();
   }
 
-  function getNoteText(surah, ayah){ return notes[ayahKey(surah, ayah)] || ""; }
+  function getNoteText(surah, ayah) { return notes[ayahKey(surah, ayah)] || ""; }
 
-  function setNote(surah, ayah, text){
+  function setNote(surah, ayah, text) {
     var key = ayahKey(surah, ayah);
     var t = (text || "").trim();
     if (t) notes[key] = t;
@@ -1451,55 +1488,55 @@
   // ---------------- partial-ayah word highlights (long-press + drag) ----------------
   var WORD_HL_KEY = "mushafHifzWordHighlights"; // [{s, a, w1, w2, ar, tr}] — w = ordinal within the ayah
 
-  function loadWordHighlights(){
-    try{
+  function loadWordHighlights() {
+    try {
       var arr = JSON.parse(localStorage.getItem(WORD_HL_KEY) || "[]");
       if (!Array.isArray(arr)) return [];
-      return arr.filter(function(e){
+      return arr.filter(function (e) {
         return e && Number.isInteger(e.s) && e.s >= 1 && e.s <= 114 &&
           Number.isInteger(e.a) && e.a >= 1 && e.a <= 286 &&
           Number.isInteger(e.w1) && Number.isInteger(e.w2) && e.w1 >= 0 && e.w1 <= e.w2 &&
           validHighlightColor(e.ar) && validHighlightColor(e.tr) && validHighlightColor(e.c);
-      }).map(function(e){
+      }).map(function (e) {
         // legacy single-color entries lit the whole cell — carry them over as ar+tr
         var ar = e.ar != null ? e.ar : e.c;
         var tr = e.tr != null ? e.tr : e.c;
         return { s: e.s, a: e.a, w1: e.w1, w2: e.w2, ar: ar != null ? ar : null, tr: tr != null ? tr : null };
       });
-    } catch(e){
+    } catch (e) {
       return [];
     }
   }
 
   var wordHighlights = loadWordHighlights();
 
-  function saveWordHighlights(){
-    try{ localStorage.setItem(WORD_HL_KEY, JSON.stringify(wordHighlights)); } catch(e){ /* storage unavailable — just won't persist */ }
+  function saveWordHighlights() {
+    try { localStorage.setItem(WORD_HL_KEY, JSON.stringify(wordHighlights)); } catch (e) { /* storage unavailable — just won't persist */ }
   }
 
   // set (or clear, color=null) one side ("ar" lights the arabic words, "tr" their glosses)
   // of a word-ordinal range. An exact-range match is mutated so the same range can carry
   // arab and arti colors from separate selections; on partial overlap only the incoming
   // side is taken over — the other side was selected independently and survives untouched.
-  function setWordHighlight(surah, ayah, w1, w2, target, color){
+  function setWordHighlight(surah, ayah, w1, w2, target, color) {
     var exact = null;
-    wordHighlights = wordHighlights.filter(function(e){
+    wordHighlights = wordHighlights.filter(function (e) {
       if (e.s !== surah || e.a !== ayah || e.w1 > w2 || e.w2 < w1) return true;
-      if (e.w1 === w1 && e.w2 === w2){ exact = e; return true; }
+      if (e.w1 === w1 && e.w2 === w2) { exact = e; return true; }
       e[target] = null; // partially overlapped on this side — the new range takes it over
       return !!(e.ar || e.tr); // fully-cleaned entries don't linger
     });
-    if (color && !exact){
+    if (color && !exact) {
       exact = { s: surah, a: ayah, w1: w1, w2: w2, ar: null, tr: null };
       wordHighlights.push(exact);
     }
-    if (exact){
+    if (exact) {
       exact[target] = color;
-      if (!exact.ar && !exact.tr){
-        wordHighlights = wordHighlights.filter(function(e){ return e !== exact; });
+      if (!exact.ar && !exact.tr) {
+        wordHighlights = wordHighlights.filter(function (e) { return e !== exact; });
       }
     }
-    wordHighlights.sort(function(x, y){ return x.s - y.s || x.a - y.a || x.w1 - y.w1; });
+    wordHighlights.sort(function (x, y) { return x.s - y.s || x.a - y.a || x.w1 - y.w1; });
     saveWordHighlights();
     applyAyahDecorations();
   }
@@ -1507,29 +1544,29 @@
   // ---------------- arti-only highlights over the full-ayah translation ----------------
   var TR_HL_KEY = "mushafHifzTrHighlights"; // [{s, a, t1, t2, c}] — t = word index within the ayah's translation text
 
-  function loadTrHighlights(){
-    try{
+  function loadTrHighlights() {
+    try {
       var arr = JSON.parse(localStorage.getItem(TR_HL_KEY) || "[]");
       if (!Array.isArray(arr)) return [];
-      return arr.filter(function(e){
+      return arr.filter(function (e) {
         return e && Number.isInteger(e.s) && e.s >= 1 && e.s <= 114 &&
           Number.isInteger(e.a) && e.a >= 1 && e.a <= 286 &&
           Number.isInteger(e.t1) && Number.isInteger(e.t2) && e.t1 >= 0 && e.t1 <= e.t2 &&
           Number.isInteger(e.c) && e.c >= 1 && e.c <= HIGHLIGHT_COLORS;
       });
-    } catch(e){
+    } catch (e) {
       return [];
     }
   }
 
   var trHighlights = loadTrHighlights();
 
-  function saveTrHighlights(){
-    try{ localStorage.setItem(TR_HL_KEY, JSON.stringify(trHighlights)); } catch(e){ /* storage unavailable — just won't persist */ }
+  function saveTrHighlights() {
+    try { localStorage.setItem(TR_HL_KEY, JSON.stringify(trHighlights)); } catch (e) { /* storage unavailable — just won't persist */ }
   }
 
-  function exactTrEntry(r){
-    for (var i = 0; i < trHighlights.length; i++){
+  function exactTrEntry(r) {
+    for (var i = 0; i < trHighlights.length; i++) {
       var e = trHighlights[i];
       if (e.s === r.s && e.a === r.a && e.t1 === r.t1 && e.t2 === r.t2) return e;
     }
@@ -1539,20 +1576,20 @@
   // set (or clear, color=null) the stabilo over a word range of the ayah's translation.
   // One color per range (the text is all "arti" — no per-side split); partial overlaps
   // are replaced by the incoming range, like same-side word ranges.
-  function setTrHighlight(surah, ayah, t1, t2, color){
+  function setTrHighlight(surah, ayah, t1, t2, color) {
     var exact = null;
-    trHighlights = trHighlights.filter(function(e){
+    trHighlights = trHighlights.filter(function (e) {
       if (e.s !== surah || e.a !== ayah || e.t1 > t2 || e.t2 < t1) return true;
-      if (e.t1 === t1 && e.t2 === t2){ exact = e; return true; }
+      if (e.t1 === t1 && e.t2 === t2) { exact = e; return true; }
       return false; // partial overlap — absorbed by the incoming range
     });
-    if (color && !exact){
+    if (color && !exact) {
       exact = { s: surah, a: ayah, t1: t1, t2: t2, c: color };
       trHighlights.push(exact);
     }
     if (exact) exact.c = color;
-    if (exact && !exact.c) trHighlights = trHighlights.filter(function(e){ return e !== exact; });
-    trHighlights.sort(function(x, y){ return x.s - y.s || x.a - y.a || x.t1 - y.t1; });
+    if (exact && !exact.c) trHighlights = trHighlights.filter(function (e) { return e !== exact; });
+    trHighlights.sort(function (x, y) { return x.s - y.s || x.a - y.a || x.t1 - y.t1; });
     saveTrHighlights();
     applyAyahDecorations();
   }
@@ -1560,12 +1597,12 @@
   // ---------------- word-range notes ("catatan kata") ----------------
   var WORD_NOTES_KEY = "mushafHifzWordNotes"; // "s:a:w1-w2" → text
 
-  function loadWordNotes(){
-    try{
+  function loadWordNotes() {
+    try {
       var obj = JSON.parse(localStorage.getItem(WORD_NOTES_KEY) || "{}");
       if (!obj || typeof obj !== "object" || Array.isArray(obj)) return {};
       var out = {};
-      for (var k in obj){
+      for (var k in obj) {
         var p = k.split(":");
         if (p.length !== 3) continue;
         var range = p[2].split("-");
@@ -1575,22 +1612,22 @@
         if (typeof obj[k] === "string" && obj[k].length > 0 && obj[k].length <= 2000) out[k] = obj[k];
       }
       return out;
-    } catch(e){
+    } catch (e) {
       return {};
     }
   }
 
   var wordNotes = loadWordNotes();
 
-  function saveWordNotes(){
-    try{ localStorage.setItem(WORD_NOTES_KEY, JSON.stringify(wordNotes)); } catch(e){ /* storage unavailable — just won't persist */ }
+  function saveWordNotes() {
+    try { localStorage.setItem(WORD_NOTES_KEY, JSON.stringify(wordNotes)); } catch (e) { /* storage unavailable — just won't persist */ }
   }
 
-  function wordNoteKey(surah, ayah, w1, w2){ return surah + ":" + ayah + ":" + w1 + "-" + w2; }
+  function wordNoteKey(surah, ayah, w1, w2) { return surah + ":" + ayah + ":" + w1 + "-" + w2; }
 
-  function getWordNoteText(surah, ayah, w1, w2){ return wordNotes[wordNoteKey(surah, ayah, w1, w2)] || ""; }
+  function getWordNoteText(surah, ayah, w1, w2) { return wordNotes[wordNoteKey(surah, ayah, w1, w2)] || ""; }
 
-  function setWordNote(surah, ayah, w1, w2, text){
+  function setWordNote(surah, ayah, w1, w2, text) {
     var key = wordNoteKey(surah, ayah, w1, w2);
     var t = (text || "").trim();
     if (t) wordNotes[key] = t;
@@ -1599,15 +1636,15 @@
     renderNoteList(); // keep the sidebar Catatan sub-tab in sync from every mutation path
   }
 
-  function wordNotesFor(surah, ayah){
+  function wordNotesFor(surah, ayah) {
     var out = [];
-    for (var k in wordNotes){
+    for (var k in wordNotes) {
       var p = k.split(":");
       if (+p[0] !== surah || +p[1] !== ayah) continue;
       var r = p[2].split("-");
       out.push({ w1: +r[0], w2: +r[1], text: wordNotes[k] });
     }
-    out.sort(function(x, y){ return x.w1 - y.w1; });
+    out.sort(function (x, y) { return x.w1 - y.w1; });
     return out;
   }
 
@@ -1618,21 +1655,21 @@
   var ayahPopupEl = null;
 
   // shared swatch-row sync: currentOf(target) returns that side's applied color (or null)
-  function syncHlRows(popupEl, currentOf){
-    popupEl.querySelectorAll(".ap-hl-row").forEach(function(row){
+  function syncHlRows(popupEl, currentOf) {
+    popupEl.querySelectorAll(".ap-hl-row").forEach(function (row) {
       var current = currentOf(row.dataset.hlTarget);
-      row.querySelectorAll(".ap-swatch").forEach(function(b){
+      row.querySelectorAll(".ap-swatch").forEach(function (b) {
         b.classList.toggle("on", +b.dataset.color === (current || 0));
       });
       row.querySelector(".ap-off").classList.toggle("on", !current);
     });
   }
 
-  function syncAyahPopupState(){
+  function syncAyahPopupState() {
     if (!ayahPopupEl || !ayahPopupEl.__target) return;
     var t = ayahPopupEl.__target;
     var h = highlights[ayahKey(t.surah, t.ayah)] || {};
-    syncHlRows(ayahPopupEl, function(target){ return h[target]; });
+    syncHlRows(ayahPopupEl, function (target) { return h[target]; });
     ayahPopupEl.querySelector(".ap-bm").textContent =
       isBookmarked(t.surah, t.ayah) ? "🔖 Hapus markah ayat ini" : "🔖 Tandai ayat ini";
     ayahPopupEl.querySelector(".ap-note").textContent =
@@ -1641,7 +1678,7 @@
 
   // pick(colorOrNull) fully owns toggle/apply/sync for its popup — the row is just chrome;
   // target ("ar"|"tr") only tags the row so the shared swatch-sync knows which side it is
-  function buildHlRow(label, target, pick){
+  function buildHlRow(label, target, pick) {
     var row = document.createElement("div");
     row.className = "ap-hl-row";
     row.dataset.hlTarget = target;
@@ -1651,14 +1688,14 @@
     row.appendChild(lab);
     var wrap = document.createElement("div");
     wrap.className = "ap-swatches";
-    for (var c = 1; c <= HIGHLIGHT_COLORS; c++){
+    for (var c = 1; c <= HIGHLIGHT_COLORS; c++) {
       var b = document.createElement("button");
       b.type = "button";
       b.className = "ap-swatch";
       b.dataset.color = c;
       b.style.background = HL_SWATCHES[c - 1];
       b.title = "Stabilo " + label;
-      b.addEventListener("click", function(){ pick(+this.dataset.color); });
+      b.addEventListener("click", function () { pick(+this.dataset.color); });
       wrap.appendChild(b);
     }
     var off = document.createElement("button");
@@ -1666,20 +1703,20 @@
     off.className = "ap-off";
     off.textContent = "✕";
     off.title = "Hapus stabilo " + label;
-    off.addEventListener("click", function(){ pick(null); });
+    off.addEventListener("click", function () { pick(null); });
     wrap.appendChild(off);
     row.appendChild(wrap);
     return row;
   }
 
-  function ensureAyahPopup(){
+  function ensureAyahPopup() {
     if (ayahPopupEl) return ayahPopupEl;
     ayahPopupEl = document.createElement("div");
     ayahPopupEl.className = "ayah-popup";
     var bm = document.createElement("button");
     bm.type = "button";
     bm.className = "ap-wide ap-bm";
-    bm.addEventListener("click", function(){
+    bm.addEventListener("click", function () {
       var t = ayahPopupEl.__target;
       if (t) toggleBookmark(t.surah, t.ayah, currentPage);
       hideAyahPopup();
@@ -1687,13 +1724,13 @@
     var note = document.createElement("button");
     note.type = "button";
     note.className = "ap-wide ap-note";
-    note.addEventListener("click", function(){
+    note.addEventListener("click", function () {
       var t = ayahPopupEl.__target;
       hideAyahPopup();
       if (t) showNoteSheet(t.surah, t.ayah);
     });
-    function pickSide(target){
-      return function(color){
+    function pickSide(target) {
+      return function (color) {
         var t = ayahPopupEl.__target;
         if (!t) return;
         var h = highlights[ayahKey(t.surah, t.ayah)] || {};
@@ -1707,18 +1744,18 @@
     ayahPopupEl.appendChild(buildHlRow("Arti", "tr", pickSide("tr")));
     ayahPopupEl.appendChild(note);
     document.body.appendChild(ayahPopupEl);
-    document.addEventListener("pointerdown", function(e){
+    document.addEventListener("pointerdown", function (e) {
       if (ayahPopupEl.classList.contains("open") && !ayahPopupEl.contains(e.target)) hideAyahPopup();
     });
     window.addEventListener("scroll", hideAyahPopup, true);
     return ayahPopupEl;
   }
 
-  function hideAyahPopup(){
+  function hideAyahPopup() {
     if (ayahPopupEl) ayahPopupEl.classList.remove("open");
   }
 
-  function showAyahPopup(x, y, surah, ayah){
+  function showAyahPopup(x, y, surah, ayah) {
     var popup = ensureAyahPopup();
     popup.__target = { surah: surah, ayah: ayah };
     syncAyahPopupState();
@@ -1737,23 +1774,23 @@
   // only resolves against pageWordAyahCache/pageLinesCache (the mushaf-mode line layout).
   // Long-press then release = the ayah popup as before; long-press then DRAG = select a
   // word range for a partial-ayah stabilo (word-selection machinery below).
-  function wireLongPressAyahActions(el, fixedAyahPair){
+  function wireLongPressAyahActions(el, fixedAyahPair) {
     var timer = null;
     var startX = 0, startY = 0;
     var pressTarget = null;
 
-    function cancel(){
+    function cancel() {
       clearTimeout(timer);
       timer = null;
     }
 
-    el.addEventListener("pointerdown", function(e){
+    el.addEventListener("pointerdown", function (e) {
       if (e.pointerType === "mouse" && e.button !== 0) return;
       startX = e.clientX;
       startY = e.clientY;
       pressTarget = e.target;
       cancel();
-      timer = setTimeout(function(){
+      timer = setTimeout(function () {
         timer = null;
         suppressNextWordClick = true;
         var idxEl = el.dataset.idx !== undefined ? el : el.querySelector("[data-idx]");
@@ -1766,7 +1803,7 @@
         var pt = pressTarget;
         var trWord = pt && pt.closest ? pt.closest(".tr-word") : null;
         var wordEl = (pt && pt.closest ? pt.closest(".word") : null);
-        if (!wordEl){
+        if (!wordEl) {
           var cell = pt && pt.closest ? pt.closest(".word-cell, .ayah-word") : null;
           wordEl = cell ? cell.querySelector(".word") : (el.classList.contains("word") ? el : el.querySelector(".word"));
         }
@@ -1775,7 +1812,7 @@
         else showAyahPopup(startX, startY, ayahPair[0], ayahPair[1]); // e.g. gaps — nothing to drag
       }, LONG_PRESS_MS);
     });
-    el.addEventListener("pointermove", function(e){
+    el.addEventListener("pointermove", function (e) {
       if (!timer) return;
       if (Math.abs(e.clientX - startX) > LONG_PRESS_MOVE_TOLERANCE || Math.abs(e.clientY - startY) > LONG_PRESS_MOVE_TOLERANCE) cancel();
     });
@@ -1797,9 +1834,9 @@
   var SWIPE_LOCK_AFTER_SELECTION_MS = 2000;
   var swipeLockedUntil = 0;
 
-  function swipeLocked(){ return !!wordSel || Date.now() < swipeLockedUntil; }
+  function swipeLocked() { return !!wordSel || Date.now() < swipeLockedUntil; }
 
-  function wordElAtPoint(x, y){
+  function wordElAtPoint(x, y) {
     var hit = document.elementFromPoint(x, y);
     if (!hit || !hit.closest) return null;
     if (hit.classList.contains("wgloss")) return hit;
@@ -1809,25 +1846,25 @@
     return w.classList.contains("word") ? w : null;
   }
 
-  function trWordAtPoint(x, y){
+  function trWordAtPoint(x, y) {
     var hit = document.elementFromPoint(x, y);
     return hit && hit.closest ? hit.closest(".tr-word") : null;
   }
 
-  function wordSelAyahOf(el){
+  function wordSelAyahOf(el) {
     var block = el.closest(".ayah-block");
     if (block) return [+block.dataset.surah, +block.dataset.ayah];
     return getPageWordAyahList(currentPage)[+el.dataset.idx] || null;
   }
 
-  function tintWordSelection(){
+  function tintWordSelection() {
     var container = document.getElementById("mushafPage");
-    container.querySelectorAll(".wsel").forEach(function(el){ el.classList.remove("wsel"); });
+    container.querySelectorAll(".wsel").forEach(function (el) { el.classList.remove("wsel"); });
     if (!wordSel) return;
-    if (wordSel.kind === "tr"){ // arti selection — a word range of the ayah's translation
+    if (wordSel.kind === "tr") { // arti selection — a word range of the ayah's translation
       var tlo = Math.min(wordSel.origin, wordSel.cur);
       var thi = Math.max(wordSel.origin, wordSel.cur);
-      wordSel.blockEl.querySelectorAll(".tr-word").forEach(function(el){
+      wordSel.blockEl.querySelectorAll(".tr-word").forEach(function (el) {
         var t = +el.dataset.t;
         if (t >= tlo && t <= thi) el.classList.add("wsel");
       });
@@ -1837,7 +1874,7 @@
     var lo = Math.min(wordSel.originIdx, wordSel.curIdx);
     var hi = Math.max(wordSel.originIdx, wordSel.curIdx);
     var list = null; // mushaf mode resolves ayahs through the page-wide idx list
-    container.querySelectorAll(".word").forEach(function(el){
+    container.querySelectorAll(".word").forEach(function (el) {
       var idx = +el.dataset.idx;
       if (idx < lo || idx > hi) return;
       var block = el.closest(".ayah-block");
@@ -1847,13 +1884,13 @@
     });
   }
 
-  function attachWordSelListeners(){
+  function attachWordSelListeners() {
     document.addEventListener("pointermove", wordSelMove);
     document.addEventListener("pointerup", wordSelEnd);
     document.addEventListener("pointercancel", wordSelCancel);
   }
 
-  function beginWordSelection(wordEl, ayahPair, startX, startY){
+  function beginWordSelection(wordEl, ayahPair, startX, startY) {
     wordSel = {
       kind: "word", s: ayahPair[0], a: ayahPair[1],
       originIdx: +wordEl.dataset.idx, originW: +wordEl.dataset.w,
@@ -1865,7 +1902,7 @@
   }
 
   // arti selection over the ayah's full translation ("t" = word index within that text)
-  function beginTrSelection(trWordEl, ayahPair, startX, startY){
+  function beginTrSelection(trWordEl, ayahPair, startX, startY) {
     wordSel = {
       kind: "tr", s: ayahPair[0], a: ayahPair[1], blockEl: trWordEl.closest(".ayah-block"),
       origin: +trWordEl.dataset.t, cur: +trWordEl.dataset.t,
@@ -1875,20 +1912,20 @@
     attachWordSelListeners();
   }
 
-  function detachWordSel(){
+  function detachWordSel() {
     document.removeEventListener("pointermove", wordSelMove);
     document.removeEventListener("pointerup", wordSelEnd);
     document.removeEventListener("pointercancel", wordSelCancel);
   }
 
-  function wordSelMove(e){
+  function wordSelMove(e) {
     if (!wordSel) return;
     wordSel.lastX = e.clientX;
     wordSel.lastY = e.clientY;
-    if (wordSel.kind === "tr"){
+    if (wordSel.kind === "tr") {
       var tw = trWordAtPoint(e.clientX, e.clientY);
-      if (tw && tw.closest(".ayah-block") === wordSel.blockEl){
-        if (+tw.dataset.t !== wordSel.cur){
+      if (tw && tw.closest(".ayah-block") === wordSel.blockEl) {
+        if (+tw.dataset.t !== wordSel.cur) {
           wordSel.cur = +tw.dataset.t;
           tintWordSelection();
         }
@@ -1910,10 +1947,10 @@
       return;
     }
     var w = wordElAtPoint(e.clientX, e.clientY);
-    if (w){
+    if (w) {
       var pair = wordSelAyahOf(w);
-      if (pair && pair[0] === wordSel.s && pair[1] === wordSel.a){
-        if (+w.dataset.idx !== wordSel.curIdx){
+      if (pair && pair[0] === wordSel.s && pair[1] === wordSel.a) {
+        if (+w.dataset.idx !== wordSel.curIdx) {
           wordSel.curIdx = +w.dataset.idx;
           wordSel.curW = +w.dataset.w;
           tintWordSelection();
@@ -1944,37 +1981,37 @@
 
   // a vertical drag scrolls (touch-action:pan-y) and the browser reclaims the pointer —
   // land the selection softly at what was already picked instead of throwing it away
-  function wordSelCancel(){
+  function wordSelCancel() {
     if (!wordSel) return;
     var sel = wordSel;
     wordSel = null;
     swipeLockedUntil = Date.now() + SWIPE_LOCK_AFTER_SELECTION_MS;
     detachWordSel();
     tintWordSelection();
-    if (sel.kind === "tr"){
-      if (sel.cur !== sel.origin){
+    if (sel.kind === "tr") {
+      if (sel.cur !== sel.origin) {
         showWordPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.origin, sel.cur), Math.max(sel.origin, sel.cur), "tr");
       }
       return;
     }
-    if (sel.curIdx !== sel.originIdx){
+    if (sel.curIdx !== sel.originIdx) {
       showWordPopup(sel.lastX, sel.lastY, sel.s, sel.a, Math.min(sel.originW, sel.curW), Math.max(sel.originW, sel.curW), "word");
     }
   }
 
-  function wordSelEnd(e){
+  function wordSelEnd(e) {
     if (!wordSel) return;
     var sel = wordSel;
     wordSel = null;
     swipeLockedUntil = Date.now() + SWIPE_LOCK_AFTER_SELECTION_MS;
     detachWordSel();
     tintWordSelection();
-    if (sel.kind === "tr"){
+    if (sel.kind === "tr") {
       if (sel.cur !== sel.origin) showWordPopup(e.clientX, e.clientY, sel.s, sel.a, Math.min(sel.origin, sel.cur), Math.max(sel.origin, sel.cur), "tr");
       else showAyahPopup(e.clientX, e.clientY, sel.s, sel.a); // held but never dragged
       return;
     }
-    if (sel.curIdx === sel.originIdx){ // held but never dragged — the full-ayah popup
+    if (sel.curIdx === sel.originIdx) { // held but never dragged — the full-ayah popup
       showAyahPopup(e.clientX, e.clientY, sel.s, sel.a);
       return;
     }
@@ -1987,20 +2024,20 @@
   // ayah's full translation — and the note button writes a word-range note (arabic only).
   var wordPopupEl = null;
 
-  function exactWordEntry(r){
-    for (var i = 0; i < wordHighlights.length; i++){
+  function exactWordEntry(r) {
+    for (var i = 0; i < wordHighlights.length; i++) {
       var e = wordHighlights[i];
       if (e.s === r.s && e.a === r.a && e.w1 === r.w1 && e.w2 === r.w2) return e;
     }
     return null;
   }
 
-  function syncWordPopupState(){
+  function syncWordPopupState() {
     if (!wordPopupEl || !wordPopupEl.__range) return;
     var r = wordPopupEl.__range;
     var e = r.tr ? null : exactWordEntry(r);
     var te = r.tr ? exactTrEntry(r) : null;
-    syncHlRows(wordPopupEl, function(target){
+    syncHlRows(wordPopupEl, function (target) {
       if (r.tr) return target === "tr" ? (te ? te.c : null) : null;
       return e ? e[target] : null;
     });
@@ -2010,7 +2047,7 @@
       getWordNoteText(r.s, r.a, r.w1, r.w2) ? "📝 Edit catatan kata ini" : "📝 Catat kata terpilih";
   }
 
-  function ensureWordPopup(){
+  function ensureWordPopup() {
     if (wordPopupEl) return wordPopupEl;
     wordPopupEl = document.createElement("div");
     wordPopupEl.className = "ayah-popup word-popup";
@@ -2019,7 +2056,7 @@
     var bm = document.createElement("button");
     bm.type = "button";
     bm.className = "ap-wide ap-bm";
-    bm.addEventListener("click", function(){
+    bm.addEventListener("click", function () {
       var r = wordPopupEl.__range;
       if (r) toggleBookmark(r.s, r.a, currentPage);
       hideWordPopup();
@@ -2027,16 +2064,16 @@
     var note = document.createElement("button");
     note.type = "button";
     note.className = "ap-wide ap-note";
-    note.addEventListener("click", function(){
+    note.addEventListener("click", function () {
       var r = wordPopupEl.__range;
       hideWordPopup();
       if (r && !r.tr) showNoteSheet(r.s, r.a, { w1: r.w1, w2: r.w2 });
     });
-    function pickSide(target){
-      return function(color){
+    function pickSide(target) {
+      return function (color) {
         var r = wordPopupEl.__range;
         if (!r) return;
-        if (r.tr){ // arti selection — a single color over the translation range
+        if (r.tr) { // arti selection — a single color over the translation range
           if (target !== "tr") return;
           var te = exactTrEntry(r);
           setTrHighlight(r.s, r.a, r.t1, r.t2, color !== null && te && te.c === color ? null : color);
@@ -2053,18 +2090,18 @@
     wordPopupEl.appendChild(buildHlRow("Arti", "tr", pickSide("tr")));
     wordPopupEl.appendChild(note);
     document.body.appendChild(wordPopupEl);
-    document.addEventListener("pointerdown", function(e){
+    document.addEventListener("pointerdown", function (e) {
       if (wordPopupEl.classList.contains("open") && !wordPopupEl.contains(e.target)) hideWordPopup();
     });
     window.addEventListener("scroll", hideWordPopup, true);
     return wordPopupEl;
   }
 
-  function hideWordPopup(){
+  function hideWordPopup() {
     if (wordPopupEl) wordPopupEl.classList.remove("open");
   }
 
-  function showWordPopup(x, y, surah, ayah, r1, r2, kind){
+  function showWordPopup(x, y, surah, ayah, r1, r2, kind) {
     kind = kind || "word";
     var popup = ensureWordPopup();
     popup.__range = kind === "tr"
@@ -2091,7 +2128,7 @@
   // ---------------- note editor sheet ----------------
   var noteSheetEl = null;
 
-  function ensureNoteSheet(){
+  function ensureNoteSheet() {
     if (noteSheetEl) return noteSheetEl;
     noteSheetEl = document.createElement("div");
     noteSheetEl.className = "note-sheet";
@@ -2101,15 +2138,15 @@
       '<div class="note-title"></div>' +
       '<textarea class="note-input" rows="4" placeholder="Tulis catatan untuk ayat ini…"></textarea>' +
       '<div class="note-actions">' +
-        '<button type="button" class="note-delete">Hapus</button>' +
-        '<button type="button" class="note-cancel">Batal</button>' +
-        '<button type="button" class="note-save">Simpan</button>' +
+      '<button type="button" class="note-delete">Hapus</button>' +
+      '<button type="button" class="note-cancel">Batal</button>' +
+      '<button type="button" class="note-save">Simpan</button>' +
       '</div>';
     noteSheetEl.appendChild(card);
     noteSheetEl.querySelector(".note-cancel").addEventListener("click", hideNoteSheet);
-    noteSheetEl.querySelector(".note-save").addEventListener("click", function(){
+    noteSheetEl.querySelector(".note-save").addEventListener("click", function () {
       var t = noteSheetEl.__target;
-      if (t){
+      if (t) {
         var value = noteSheetEl.querySelector(".note-input").value;
         if (t.range) setWordNote(t.surah, t.ayah, t.range.w1, t.range.w2, value);
         else setNote(t.surah, t.ayah, value);
@@ -2117,28 +2154,28 @@
       }
       hideNoteSheet();
     });
-    noteSheetEl.querySelector(".note-delete").addEventListener("click", function(){
+    noteSheetEl.querySelector(".note-delete").addEventListener("click", function () {
       var t = noteSheetEl.__target;
-      if (t){
+      if (t) {
         if (t.range) setWordNote(t.surah, t.ayah, t.range.w1, t.range.w2, null);
         else setNote(t.surah, t.ayah, null);
         renderPage(currentPage, true);
       }
       hideNoteSheet();
     });
-    noteSheetEl.addEventListener("pointerdown", function(e){
+    noteSheetEl.addEventListener("pointerdown", function (e) {
       if (e.target === noteSheetEl) hideNoteSheet(); // tap the dim backdrop to dismiss
     });
     document.body.appendChild(noteSheetEl);
     return noteSheetEl;
   }
 
-  function hideNoteSheet(){
+  function hideNoteSheet() {
     if (noteSheetEl) noteSheetEl.classList.remove("open");
   }
 
   // range ({w1,w2}) targets a word-range note ("catatan kata") instead of the whole ayah
-  function showNoteSheet(surah, ayah, range){
+  function showNoteSheet(surah, ayah, range) {
     var sheet = ensureNoteSheet();
     sheet.__target = { surah: surah, ayah: ayah, range: range || null };
     sheet.querySelector(".note-title").textContent =
@@ -2152,45 +2189,45 @@
   // ---------------- reader shell ----------------
   var readerScroll = null; // the element that actually scrolls (set in buildReaderShell)
 
-  function buildReaderShell(){
+  function buildReaderShell() {
     // .reveal-controls is a sibling of .reader-scroll (position:fixed, see style.css) so it
     // stays put while .reader-scroll scrolls/zooms/pans underneath it. All other controls
     // (view mode, content toggles, sizes, hint words) live in the right settings panel.
     reader.innerHTML =
       '<div class="reader-scroll" id="readerScroll">' +
-        '<div class="mushaf-page" id="mushafPage"></div>' +
+      '<div class="mushaf-page" id="mushafPage"></div>' +
       '</div>' +
       '<div class="reveal-controls">' +
-        '<button id="spaceBtnL" class="step minor" title="Lanjut">ف</button>' +
-        '<button id="nextPage" class="minor" title="Hal. Berikutnya">‹«</button>' +
-        '<button id="revealAll" class="minor" title="Tampilkan semua">📖</button>' +
-        '<button id="ayahBtn" class="minor" title="Lanjut 1 Ayat">(١) ⏮</button>' +
-        '<button id="spaceBtn" class="step" title="Lanjut">(افتح)</button>' +
-        '<button id="backspaceBtn" class="minor" title="Ulangi">⌫</button>' +
-        '<button id="hideAll" class="minor" title="Ulang Semua">↺</button>' +
-        '<button id="prevPage" class="minor" title="Hal. Sebelumnya">»›</button>' +
-        '<button id="spaceBtnR" class="step minor" title="Lanjut">ف</button>' +
+      '<button id="spaceBtnL" class="step minor" title="Lanjut">ف</button>' +
+      '<button id="nextPage" class="minor" title="Hal. Berikutnya">‹«</button>' +
+      '<button id="revealAll" class="minor" title="Tampilkan semua">📖</button>' +
+      '<button id="ayahBtn" class="minor" title="Lanjut 1 Ayat">(١) ⏮</button>' +
+      '<button id="spaceBtn" class="step" title="Lanjut">(افتح)</button>' +
+      '<button id="backspaceBtn" class="minor" title="Ulangi">⌫</button>' +
+      '<button id="hideAll" class="minor" title="Ulang Semua">↺</button>' +
+      '<button id="prevPage" class="minor" title="Hal. Sebelumnya">»›</button>' +
+      '<button id="spaceBtnR" class="step minor" title="Lanjut">ف</button>' +
       '</div>';
     readerScroll = document.getElementById("readerScroll");
     mushafPageEl = document.getElementById("mushafPage");
     wirePinchZoom(readerScroll);
     wireSwipeNavigation(readerScroll);
 
-    document.getElementById("revealAll").addEventListener("click", function(){
+    document.getElementById("revealAll").addEventListener("click", function () {
       pageCursor[currentPage] = countPageWords(currentPage);
       renderPage(currentPage, true);
     });
-    document.getElementById("hideAll").addEventListener("click", function(){
+    document.getElementById("hideAll").addEventListener("click", function () {
       pageCursor[currentPage] = 0;
       renderPage(currentPage, true);
     });
-    document.getElementById("spaceBtn").addEventListener("click", function(){ moveCursor(1); });
-    document.getElementById("spaceBtnL").addEventListener("click", function(){ moveCursor(1); });
-    document.getElementById("spaceBtnR").addEventListener("click", function(){ moveCursor(1); });
-    document.getElementById("backspaceBtn").addEventListener("click", function(){ moveCursor(-1); });
+    document.getElementById("spaceBtn").addEventListener("click", function () { moveCursor(1); });
+    document.getElementById("spaceBtnL").addEventListener("click", function () { moveCursor(1); });
+    document.getElementById("spaceBtnR").addEventListener("click", function () { moveCursor(1); });
+    document.getElementById("backspaceBtn").addEventListener("click", function () { moveCursor(-1); });
     document.getElementById("ayahBtn").addEventListener("click", revealNextAyah);
-    document.getElementById("prevPage").addEventListener("click", function(){ goToPage(currentPage - 1); });
-    document.getElementById("nextPage").addEventListener("click", function(){ goToPage(currentPage + 1); });
+    document.getElementById("prevPage").addEventListener("click", function () { goToPage(currentPage - 1); });
+    document.getElementById("nextPage").addEventListener("click", function () { goToPage(currentPage + 1); });
 
     syncFixedBarOffsets();
   }
@@ -2203,7 +2240,7 @@
   // and the CDN edge), compares the app-version meta stamped by build/make-www.js, and
   // on a mismatch reloads under a fresh ?v= URL — which also pulls the freshly-stamped
   // asset URLs, so nothing stale survives the reload.
-  function checkForUpdate(){
+  function checkForUpdate() {
     var btn = document.getElementById("checkUpdate");
     var status = document.getElementById("updateStatus");
     var meta = document.querySelector('meta[name="app-version"]');
@@ -2211,11 +2248,11 @@
     btn.disabled = true;
     status.textContent = "Memeriksa…";
     fetch("index.html?cb=" + Date.now(), { cache: "no-store" })
-      .then(function(r){ if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
-      .then(function(text){
+      .then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.text(); })
+      .then(function (text) {
         var m = text.match(/<meta\s+name="app-version"\s+content="([^"]*)"/);
         var remote = m ? m[1] : "";
-        if (remote && remote !== local){
+        if (remote && remote !== local) {
           status.textContent = "Versi baru ditemukan — memuat…";
           location.replace("?v=" + encodeURIComponent(remote));
         } else {
@@ -2223,40 +2260,40 @@
           btn.disabled = false;
         }
       })
-      .catch(function(){
+      .catch(function () {
         status.textContent = "Gagal memeriksa — periksa koneksi";
         btn.disabled = false;
       });
   }
 
-  function wireSettingsPanel(){
-    document.getElementById("viewByMushaf").addEventListener("click", function(){ setViewMode("mushaf"); });
-    document.getElementById("viewByAyat").addEventListener("click", function(){ setViewMode("ayah"); });
+  function wireSettingsPanel() {
+    document.getElementById("viewByMushaf").addEventListener("click", function () { setViewMode("mushaf"); });
+    document.getElementById("viewByAyat").addEventListener("click", function () { setViewMode("ayah"); });
     document.getElementById("checkUpdate").addEventListener("click", checkForUpdate);
 
-    document.getElementById("contentArabic").addEventListener("change", function(e){ setContentPref("arabic", e.target.checked); });
-    document.getElementById("contentTranslation").addEventListener("change", function(e){ setContentPref("translation", e.target.checked); });
-    document.getElementById("contentWordGloss").addEventListener("change", function(e){ setContentPref("wordGloss", e.target.checked); });
-    document.getElementById("contentTajweed").addEventListener("change", function(e){ setContentPref("tajweed", e.target.checked); });
+    document.getElementById("contentArabic").addEventListener("change", function (e) { setContentPref("arabic", e.target.checked); });
+    document.getElementById("contentTranslation").addEventListener("change", function (e) { setContentPref("translation", e.target.checked); });
+    document.getElementById("contentWordGloss").addEventListener("change", function (e) { setContentPref("wordGloss", e.target.checked); });
+    document.getElementById("contentTajweed").addEventListener("change", function (e) { setContentPref("tajweed", e.target.checked); });
 
-    document.getElementById("arabicSizeSlider").addEventListener("input", function(e){
+    document.getElementById("arabicSizeSlider").addEventListener("input", function (e) {
       setAyahFontScale(parseFloat(e.target.value));
     });
-    document.getElementById("translationSizeSlider").addEventListener("input", function(e){
+    document.getElementById("translationSizeSlider").addEventListener("input", function (e) {
       setTranslationFontScale(parseFloat(e.target.value));
     });
 
     var hintWordSelect = document.getElementById("hintWordSelect");
     hintWordSelect.value = String(hintWordCount);
-    hintWordSelect.addEventListener("change", function(){
+    hintWordSelect.addEventListener("change", function () {
       setHintWordCount(parseInt(hintWordSelect.value, 10) || 0);
     });
 
     var settingsPanel = document.getElementById("settingsPanel");
-    document.getElementById("toggleSettings").addEventListener("click", function(){
+    document.getElementById("toggleSettings").addEventListener("click", function () {
       settingsPanel.classList.toggle("open");
     });
-    document.getElementById("settingsClose").addEventListener("click", function(){
+    document.getElementById("settingsClose").addEventListener("click", function () {
       settingsPanel.classList.remove("open");
     });
 
@@ -2270,7 +2307,7 @@
   // publishes them as CSS vars so .reader-scroll can pad itself by exactly that much (see
   // style.css) — heights vary by breakpoint, so this is measured rather than hardcoded. The
   // +buffer is breathing room between the fixed bar and the page content.
-  function syncFixedBarOffsets(){
+  function syncFixedBarOffsets() {
     var headerEl = document.querySelector("header.topbar");
     var footerEl = document.querySelector(".reveal-controls");
     var audioBarEl = document.querySelector(".audio-bar");
@@ -2283,15 +2320,15 @@
     document.documentElement.style.setProperty("--footer-h", (bottomH + 16) + "px");
   }
 
-  function moveCursor(delta){
+  function moveCursor(delta) {
     var total = countPageWords(currentPage);
     var cur = pageCursor[currentPage] || 0;
     var next = cur + delta;
-    if (next > total){
+    if (next > total) {
       advanceToNextPage();
       return;
     }
-    if (next < 0){
+    if (next < 0) {
       retreatToPreviousPage();
       return;
     }
@@ -2304,11 +2341,11 @@
   // "Lanjut" past the last word of a page lands on the next page with its first word already
   // revealed — advancing by one word always means exactly that, never a dead click that just
   // changes page with nothing revealed.
-  function advanceToNextPage(){
+  function advanceToNextPage() {
     if (currentPage >= TOTAL_PAGES) return;
     var target = currentPage + 1;
     goToPage(target);
-    loadPageLines(target).then(function(){
+    loadPageLines(target).then(function () {
       if (currentPage !== target) return; // user navigated elsewhere before this resolved
       pageCursor[target] = Math.min(1, countPageWords(target));
       renderPage(target, true);
@@ -2317,11 +2354,11 @@
 
   // "Balik" before the first word of a page lands on the previous page fully revealed except
   // its last word — mirrors advanceToNextPage so retreating by one word is symmetric.
-  function retreatToPreviousPage(){
+  function retreatToPreviousPage() {
     if (currentPage <= 1) return;
     var target = currentPage - 1;
     goToPage(target);
-    loadPageLines(target).then(function(){
+    loadPageLines(target).then(function () {
       if (currentPage !== target) return;
       pageCursor[target] = Math.max(0, countPageWords(target) - 1);
       renderPage(target, true);
@@ -2329,17 +2366,17 @@
   }
 
   // reveal the rest of whichever ayah comes next, in one go, instead of one word at a time
-  function revealNextAyah(){
+  function revealNextAyah() {
     var total = countPageWords(currentPage);
     var cur = pageCursor[currentPage] || 0;
-    if (cur >= total){
+    if (cur >= total) {
       advanceToNextPageRevealFirstAyah();
       return;
     }
     var ayahList = getPageWordAyahList(currentPage);
     var targetSurah = ayahList[cur][0], targetAyah = ayahList[cur][1];
     var next = cur;
-    while (next < total && ayahList[next][0] === targetSurah && ayahList[next][1] === targetAyah){
+    while (next < total && ayahList[next][0] === targetSurah && ayahList[next][1] === targetAyah) {
       next++;
     }
     pageCursor[currentPage] = next;
@@ -2347,11 +2384,11 @@
     renderPage(currentPage, true);
   }
 
-  function advanceToNextPageRevealFirstAyah(){
+  function advanceToNextPageRevealFirstAyah() {
     if (currentPage >= TOTAL_PAGES) return;
     var target = currentPage + 1;
     goToPage(target);
-    loadPageLines(target).then(function(){
+    loadPageLines(target).then(function () {
       if (currentPage !== target) return;
       pageCursor[target] = 0;
       revealNextAyah(); // currentPage is now target — reveals its first ayah
@@ -2363,35 +2400,35 @@
   // same page after a reveal-cursor change), otherwise shows a loading state and renders once
   // the fetch (or cache read) resolves. currentPage is set immediately either way, so a stale
   // response for a page the user has since navigated away from is detected and dropped.
-  function pageLoadingHTML(){
+  function pageLoadingHTML() {
     return '<div class="page-loading"><div class="ar">جَارٍ التَحْمِيل…</div><span>Memuat halaman…</span></div>';
   }
 
-  function showPageLoadError(pageNo){
+  function showPageLoadError(pageNo) {
     document.getElementById("mushafPage").innerHTML =
       '<div class="page-loading">' +
-        '<div>Gagal memuat halaman. Cek koneksi internet.</div>' +
-        '<button id="retryPageLoad" type="button">Coba lagi</button>' +
+      '<div>Gagal memuat halaman. Cek koneksi internet.</div>' +
+      '<button id="retryPageLoad" type="button">Coba lagi</button>' +
       '</div>';
-    document.getElementById("retryPageLoad").addEventListener("click", function(){ renderPage(pageNo, true); });
+    document.getElementById("retryPageLoad").addEventListener("click", function () { renderPage(pageNo, true); });
   }
 
-  function renderPage(pageNo, skipScrollReset){
+  function renderPage(pageNo, skipScrollReset) {
     if (pageNo < 1 || pageNo > TOTAL_PAGES) return;
     currentPage = pageNo;
     var mode = viewMode;
 
-    if (mode === "ayah"){
+    if (mode === "ayah") {
       var cachedBlocks = pageAyahBlocksCache[pageNo];
-      if (cachedBlocks){
+      if (cachedBlocks) {
         renderAyahPageContent(pageNo, cachedBlocks, skipScrollReset);
         return;
       }
       document.getElementById("mushafPage").innerHTML = pageLoadingHTML();
-      loadPageAyahBlocks(pageNo).then(function(blocks){
+      loadPageAyahBlocks(pageNo).then(function (blocks) {
         if (currentPage !== pageNo || viewMode !== mode) return; // stale: navigated or switched mode before this resolved
         renderAyahPageContent(pageNo, blocks, skipScrollReset);
-      }).catch(function(err){
+      }).catch(function (err) {
         console.error(err);
         if (currentPage !== pageNo || viewMode !== mode) return;
         showPageLoadError(pageNo);
@@ -2400,52 +2437,52 @@
     }
 
     var cached = pageLinesCache[pageNo];
-    if (cached){
+    if (cached) {
       renderPageContent(pageNo, cached, skipScrollReset);
       return;
     }
 
     document.getElementById("mushafPage").innerHTML = pageLoadingHTML();
-    loadPageLines(pageNo).then(function(lines){
+    loadPageLines(pageNo).then(function (lines) {
       if (currentPage !== pageNo || viewMode !== mode) return;
       renderPageContent(pageNo, lines, skipScrollReset);
-    }).catch(function(err){
+    }).catch(function (err) {
       console.error(err);
       if (currentPage !== pageNo || viewMode !== mode) return;
       showPageLoadError(pageNo);
     });
   }
 
-  function renderPageContent(pageNo, linesOnPage, skipScrollReset){
+  function renderPageContent(pageNo, linesOnPage, skipScrollReset) {
     var container = document.getElementById("mushafPage");
     var cursor = pageCursor[pageNo] || 0;
     var wordIndex = 0;
     container.setAttribute("data-page", pageNo);
     var html = '<div class="ayat-flow">';
 
-    linesOnPage.forEach(function(line){
-      if (line[0] === "h"){
+    linesOnPage.forEach(function (line) {
+      if (line[0] === "h") {
         var surahNumber = line[1], title = line[2];
         var meta = SURAH_META[surahNumber - 1];
         html += '<div class="surah-banner">' +
           '<div class="name">' + title + '</div>' +
           '<div class="name-lat">' + meta[2] + '</div>' +
           '<div class="meta">' +
-            '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
-            ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +
+          '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
+          ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +
           '</div>' +
-        '</div>';
-      } else if (line[0] === "b"){
+          '</div>';
+      } else if (line[0] === "b") {
         html += '<div class="basmalah">' + BASMALAH + '</div>';
       } else { // "t" — a real mushaf line
         html += '<div class="mushaf-line">';
-        line[1].forEach(function(run){
+        line[1].forEach(function (run) {
           var surah = run[0], ayah = run[1], startWord = run[2], wordEntries = run[3], endsAyah = run[4], isSajdaAyah = run[5], tajweedEntries = run[6], glossEntries = run[7];
-          for (var wi = 0; wi < wordEntries.length; wi++){
+          for (var wi = 0; wi < wordEntries.length; wi++) {
             var segs = wordEntries[wi].split(" ");
             var tjParts = tajweedSegments(tajweedEntries ? tajweedEntries[wi] : null, segs.length);
             var gloss = glossEntries ? glossEntries[wi] : null;
-            for (var si = 0; si < segs.length; si++){
+            for (var si = 0; si < segs.length; si++) {
               var isLastOfAyah = endsAyah && wi === wordEntries.length - 1 && si === segs.length - 1;
               var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
               var revealed = wordIndex < cursor || isHintWord;
@@ -2453,10 +2490,10 @@
               // its Indonesian gloss (always visible — a study aid, never tested — see
               // body.hide-word-gloss in style.css for the toggle)
               html += '<span class="word-cell">' +
-                '<span class="word' + ((si==1) ? " waqaf" : "") + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>' +
+                '<span class="word' + ((si == 1) ? " waqaf" : "") + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + (tjParts ? tjParts[si] : segs[si]) + '</span>' +
                 (gloss && si === 0 ? '<span class="wgloss" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + escapeHtml(gloss) + '</span>' : "") +
-              '</span>';
-              if (isLastOfAyah){
+                '</span>';
+              if (isLastOfAyah) {
                 // Independent of the word span above (CSS filter can't be un-blurred by a
                 // descendant, so this has to be a sibling, not nested inside it): with hint
                 // words on, show which ayah is coming even before the reveal cursor reaches its
@@ -2478,9 +2515,9 @@
     html += '</div><div class="page-number">— ' + toArabicDigits(pageNo) + ' —</div>';
     container.innerHTML = html;
 
-    container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function(el){
-      el.addEventListener("click", function(){
-        if (suppressNextWordClick){ suppressNextWordClick = false; return; }
+    container.querySelectorAll(".word, .wgloss, .num, .sajda-tag").forEach(function (el) {
+      el.addEventListener("click", function () {
+        if (suppressNextWordClick) { suppressNextWordClick = false; return; }
         var idx = +el.dataset.idx;
         pageCursor[currentPage] = idx + 1;
         if (el.classList.contains("word") || el.classList.contains("wgloss")) playWordAtIndex(currentPage, idx);
@@ -2499,12 +2536,12 @@
 
     updateStatus(surahsOnPage);
     fitLinesToWidth();
-    if (!skipScrollReset){
+    if (!skipScrollReset) {
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
     }
 
-    let allrev = container.querySelectorAll(".word.revealed"); 
+    let allrev = container.querySelectorAll(".word.revealed");
     if (allrev.length > 0) {
       let lastel = allrev[allrev.length - 1];
       lastel.scrollIntoView({ block: "center", behavior: "smooth" });
@@ -2522,13 +2559,13 @@
   // Swap them for sentinel chars before tokenizing so they survive the word split and
   // escaping, then render each as a small superscript after its word. Footnote markers
   // aren't selection targets — only the .tr-word spans join an arti selection range.
-  function translationToHtml(text){
+  function translationToHtml(text) {
     var ti = 0;
     return text
       .replace(/<sup\b[^>]*>([\s\S]*?)<\/sup>/gi, "\u0001$1\u0002")
       .replace(/<[^>]*>/g, "") // any other stray markup — show the words, not the tags
       .split(/\s+/).filter(Boolean)
-      .map(function(tok){
+      .map(function (tok) {
         var fn = tok.match(/\u0001([^\u0002]*)\u0002/);
         var clean = tok.replace(/\u0001[^\u0002]*\u0002/g, "");
         var out = clean
@@ -2539,17 +2576,17 @@
       }).join(" ");
   }
 
-  function renderAyahPageContent(pageNo, blocks, skipScrollReset){
+  function renderAyahPageContent(pageNo, blocks, skipScrollReset) {
     var container = document.getElementById("mushafPage");
     var cursor = pageCursor[pageNo] || 0;
     var wordIndex = 0;
     var html = '<div class="ayah-flow">';
     var surahsOnPage = [];
 
-    function noteSurah(n){ if (surahsOnPage.indexOf(n) === -1) surahsOnPage.push(n); }
+    function noteSurah(n) { if (surahsOnPage.indexOf(n) === -1) surahsOnPage.push(n); }
 
-    blocks.forEach(function(block){
-      if (block[0] === "h"){
+    blocks.forEach(function (block) {
+      if (block[0] === "h") {
         var surahNumber = block[1], title = block[2];
         var meta = SURAH_META[surahNumber - 1];
         noteSurah(surahNumber);
@@ -2557,17 +2594,17 @@
           '<div class="name">' + title + '</div>' +
           '<div class="name-lat">' + meta[2] + '</div>' +
           '<div class="meta">' +
-            '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
-            ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +
+          '<span class="badge">' + (meta[4] ? "Makkiyah" : "Madaniyah") + '</span>' +
+          ' &nbsp;•&nbsp; ' + meta[5] + ' ayat' +
           '</div>' +
-        '</div>';
-      } else if (block[0] === "b"){
+          '</div>';
+      } else if (block[0] === "b") {
         html += '<div class="basmalah">' + BASMALAH + '</div>';
       } else { // "ayah"
         var surah = block[1], ayah = block[2], isSajdaAyah = block[3], words = block[4], ayahTranslation = block[5], startWord = block[6];
         noteSurah(surah);
         html += '<div class="ayah-block" data-surah="' + surah + '" data-ayah="' + ayah + '"><div class="ayah-words">';
-        words.forEach(function(pair, wi){
+        words.forEach(function (pair, wi) {
           var isHintWord = hintWordCount > 0 && (startWord + wi) <= hintWordCount;
           var revealed = wordIndex < cursor || isHintWord;
           // whole-entry tajweed here (one span per word entry in this view — no per-segment
@@ -2578,34 +2615,34 @@
           html += '<div class="ayah-word">' +
             '<span class="word aw-ar' + (revealed ? " revealed" : "") + (isHintWord ? " hint" : "") + '" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + arHtml + '</span>' +
             (pair[1] ? '<span class="aw-gloss" data-idx="' + wordIndex + '" data-w="' + (startWord + wi) + '">' + pair[1] + '</span>' : "") +
-          '</div>';
+            '</div>';
           wordIndex += pair[0].split(" ").length;
         });
         var numRevealed = wordIndex - 1 < cursor || hintWordCount > 0;
         html += '<span class="num' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">' + toArabicDigits(ayah) + '</span>' +
           (isSajdaAyah ? '<span class="sajda-tag' + (numRevealed ? " revealed" : "") + '" data-idx="' + (wordIndex - 1) + '">سجدة</span>' : "") +
-        '</div>' +
-        (ayahTranslation ? '<div class="ayah-translation">' + translationToHtml(ayahTranslation) + '</div>' : "") +
-        (getNoteText(surah, ayah) ? '<div class="ayah-note">📝 ' + escapeHtml(getNoteText(surah, ayah)) + '</div>' : "") +
-        wordNotesFor(surah, ayah).map(function(wn){
-          var quote = "";
-          words.forEach(function(pair, wi){
-            var ord = startWord + wi;
-            if (ord >= wn.w1 && ord <= wn.w2) quote += (quote ? " " : "") + pair[0];
-          });
-          return '<div class="ayah-note word-note" data-w1="' + wn.w1 + '" data-w2="' + wn.w2 + '">📝 ' +
-            '<span class="wn-quote">' + quote + '</span> — ' + escapeHtml(wn.text) + '</div>';
-        }).join("") +
-        '</div>';
+          '</div>' +
+          (ayahTranslation ? '<div class="ayah-translation">' + translationToHtml(ayahTranslation) + '</div>' : "") +
+          (getNoteText(surah, ayah) ? '<div class="ayah-note">📝 ' + escapeHtml(getNoteText(surah, ayah)) + '</div>' : "") +
+          wordNotesFor(surah, ayah).map(function (wn) {
+            var quote = "";
+            words.forEach(function (pair, wi) {
+              var ord = startWord + wi;
+              if (ord >= wn.w1 && ord <= wn.w2) quote += (quote ? " " : "") + pair[0];
+            });
+            return '<div class="ayah-note word-note" data-w1="' + wn.w1 + '" data-w2="' + wn.w2 + '">📝 ' +
+              '<span class="wn-quote">' + quote + '</span> — ' + escapeHtml(wn.text) + '</div>';
+          }).join("") +
+          '</div>';
       }
     });
 
     html += '</div><div class="page-number">— ' + toArabicDigits(pageNo) + ' —</div>';
     container.innerHTML = html;
 
-    container.querySelectorAll(".word, .num, .sajda-tag").forEach(function(el){
-      el.addEventListener("click", function(){
-        if (suppressNextWordClick){ suppressNextWordClick = false; return; }
+    container.querySelectorAll(".word, .num, .sajda-tag").forEach(function (el) {
+      el.addEventListener("click", function () {
+        if (suppressNextWordClick) { suppressNextWordClick = false; return; }
         var idx = +el.dataset.idx;
         pageCursor[currentPage] = idx + 1;
         if (el.classList.contains("word")) playWordAtIndex(currentPage, idx);
@@ -2613,24 +2650,24 @@
         renderPage(currentPage, true);
       });
     });
-    container.querySelectorAll(".ayah-block").forEach(function(block){
+    container.querySelectorAll(".ayah-block").forEach(function (block) {
       var ayahPair = [+block.dataset.surah, +block.dataset.ayah];
-      block.querySelectorAll(".ayah-word").forEach(function(wordEl){
+      block.querySelectorAll(".ayah-word").forEach(function (wordEl) {
         wireLongPressAyahActions(wordEl, ayahPair);
       });
       // the full-ayah translation is exactly what a reader wants to stabilo — make it a
       // long-press target too (tapping it does nothing, unlike words)
-      block.querySelectorAll(".ayah-translation").forEach(function(trEl){
+      block.querySelectorAll(".ayah-translation").forEach(function (trEl) {
         wireLongPressAyahActions(trEl, ayahPair);
       });
       // visible note boxes open straight into the editor on tap — whole-ayah and word-range
-      block.querySelectorAll(".ayah-note").forEach(function(noteEl){
-        if (noteEl.classList.contains("word-note")){
-          noteEl.addEventListener("click", function(){
+      block.querySelectorAll(".ayah-note").forEach(function (noteEl) {
+        if (noteEl.classList.contains("word-note")) {
+          noteEl.addEventListener("click", function () {
             showNoteSheet(ayahPair[0], ayahPair[1], { w1: +noteEl.dataset.w1, w2: +noteEl.dataset.w2 });
           });
         } else {
-          noteEl.addEventListener("click", function(){ showNoteSheet(ayahPair[0], ayahPair[1]); });
+          noteEl.addEventListener("click", function () { showNoteSheet(ayahPair[0], ayahPair[1]); });
         }
       });
     });
@@ -2641,15 +2678,15 @@
 
     if (surahsOnPage.length) highlightActiveSurah(surahsOnPage[0]);
     updateStatus(surahsOnPage);
-    if (!skipScrollReset){
+    if (!skipScrollReset) {
       resetPageZoom();
       if (readerScroll) readerScroll.scrollTop = 0;
     }
     afterPageRender(); // after the scroll reset, so centering on the playing ayah wins
   }
 
-  function updateStatus(surahsOnPage){
-    var html = (surahsOnPage || pageSurahNumbers(currentPage)).map(function(n){
+  function updateStatus(surahsOnPage) {
+    var html = (surahsOnPage || pageSurahNumbers(currentPage)).map(function (n) {
       var m = SURAH_META[n - 1];
       return '<span class="ss-ar">' + m[1] + '</span> <span class="ss-lat">' + m[2] + '</span>';
     }).join('<span class="ss-sep"> · </span>');
@@ -2659,13 +2696,13 @@
     // on panel-open, so an already-open panel went stale after navigation and ▶ played the
     // previous surah's range. Suppressed while a ▶ start is pending its page navigation.
     if (!rangeStartPending &&
-        document.getElementById("audioBar").classList.contains("open") && !Reciter.rangeActive()){
+      document.getElementById("audioBar").classList.contains("open") && !Reciter.rangeActive()) {
       syncRangeToReadingPosition();
     }
   }
 
   // ---------------- keep each mushaf line on one visual row ----------------
-  function fitLinesToWidth(){
+  function fitLinesToWidth() {
     var flow = document.querySelector(".ayat-flow");
     if (!flow) return;
     document.documentElement.style.setProperty("--page-scale", "1");
@@ -2673,14 +2710,14 @@
     if (!lines.length) return;
     var minScale = 1;
     var containerWidth = flow.clientWidth;
-    lines.forEach(function(line){
+    lines.forEach(function (line) {
       var needed = line.scrollWidth;
-      if (needed > containerWidth){
+      if (needed > containerWidth) {
         var scale = containerWidth / needed;
         if (scale < minScale) minScale = scale;
       }
     });
-    if (minScale < 1){
+    if (minScale < 1) {
       // don't shrink text into illegibility on a very dense page — past this floor,
       // that one exceptional line just scrolls horizontally on its own (see .mushaf-line CSS)
       // instead of dragging every other line on the page down with it.
@@ -2693,7 +2730,7 @@
     }
   }
 
-  function goToPage(n){
+  function goToPage(n) {
     if (!n) return;
     renderPage(n);
   }
@@ -2701,22 +2738,22 @@
   // ---------------- navigation controls ----------------
   // Pages turn via swipe (wireSwipeNavigation), the page-number input, the sidebar, and the
   // arrow keys (keyboard listener below) — the old footer prev/next buttons were removed.
-  function goToTypedPage(){
+  function goToTypedPage() {
     var v = parseInt(document.getElementById("pageInput").value, 10);
     if (!isNaN(v)) goToPage(Math.min(TOTAL_PAGES, Math.max(1, v)));
   }
   var pageInputDebounce = null;
-  document.getElementById("pageInput").addEventListener("input", function(){
+  document.getElementById("pageInput").addEventListener("input", function () {
     clearTimeout(pageInputDebounce);
     pageInputDebounce = setTimeout(goToTypedPage, 2000);
   });
-  document.getElementById("pageInput").addEventListener("keydown", function(e){
-    if (e.key === "Enter"){
+  document.getElementById("pageInput").addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
       clearTimeout(pageInputDebounce);
       goToTypedPage();
     }
   });
-  document.getElementById("toggleSidebar").addEventListener("click", function(){
+  document.getElementById("toggleSidebar").addEventListener("click", function () {
     shell.classList.toggle("collapsed");
   });
 
@@ -2726,11 +2763,11 @@
   // there too (GitHub issue #3). The settings panel closes the same way. The landscape-only
   // floating triggers (edge fabs) are excluded so a tap that just OPENED a panel doesn't
   // bubble up and immediately close it again.
-  document.addEventListener("click", function(e){
+  document.addEventListener("click", function (e) {
     var settingsPanel = document.getElementById("settingsPanel");
     var settingsTrigger = e.target.closest("#toggleSettings, #fabSettings");
     if (settingsPanel && settingsPanel.classList.contains("open") &&
-        !settingsPanel.contains(e.target) && !settingsTrigger){
+      !settingsPanel.contains(e.target) && !settingsTrigger) {
       settingsPanel.classList.remove("open");
     }
     if (shell.classList.contains("collapsed")) return;
@@ -2740,14 +2777,14 @@
   });
 
   // landscape-phone triggers (the topbar itself is display:none there — see style.css)
-  document.getElementById("fabSidebar").addEventListener("click", function(){
+  document.getElementById("fabSidebar").addEventListener("click", function () {
     shell.classList.toggle("collapsed");
   });
-  document.getElementById("fabSettings").addEventListener("click", function(){
+  document.getElementById("fabSettings").addEventListener("click", function () {
     document.getElementById("settingsPanel").classList.toggle("open");
   });
 
-  window.addEventListener("resize", function(){ fitLinesToWidth(); syncFixedBarOffsets(); });
+  window.addEventListener("resize", function () { fitLinesToWidth(); syncFixedBarOffsets(); });
   // web fonts (header.topbar's brand text, .page-toolbar's) can finish loading and reflow
   // after boot()'s first measurement ran — re-measure once more after everything's settled so
   // that reflow doesn't leave a stale gap/overlap between the fixed bars and the page content.
@@ -2764,56 +2801,56 @@
   // property on :root — a :root variable used in one element's `transform` can still make
   // some browsers re-evaluate style more broadly on every update, which made rapid
   // touchmove-driven zooming feel heavy; setting .style.transform is the direct/cheap path.
-  function setPageZoom(z){
+  function setPageZoom(z) {
     pageZoom = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, z));
     if (mushafPageEl) mushafPageEl.style.transform = pageZoom === 1 ? "" : "scale(" + pageZoom.toFixed(3) + ")";
     if (readerScroll) readerScroll.classList.toggle("zoomed", pageZoom > 1.001);
   }
 
-  function resetPageZoom(){ setPageZoom(1); }
+  function resetPageZoom() { setPageZoom(1); }
 
-  function touchDistance(a, b){
+  function touchDistance(a, b) {
     var dx = a.clientX - b.clientX, dy = a.clientY - b.clientY;
     return Math.sqrt(dx * dx + dy * dy);
   }
 
-  function wirePinchZoom(el){
+  function wirePinchZoom(el) {
     // touch/wheel events can fire much faster than the screen can repaint — coalesce
     // bursts into at most one style update per animation frame instead of applying every
     // single event synchronously, which was making pinch/pan feel heavy.
     var rafScheduled = false;
     var latestZoom = null;
-    function flushZoom(){
+    function flushZoom() {
       rafScheduled = false;
       setPageZoom(latestZoom);
     }
-    function scheduleZoom(z){
+    function scheduleZoom(z) {
       latestZoom = z;
-      if (!rafScheduled){
+      if (!rafScheduled) {
         rafScheduled = true;
         requestAnimationFrame(flushZoom);
       }
     }
 
-    el.addEventListener("touchstart", function(e){
+    el.addEventListener("touchstart", function (e) {
       if (viewMode === "ayah") return; // no pinch-zoom in the ayah/translation view
-      if (e.touches.length === 2){
+      if (e.touches.length === 2) {
         pinchStartDist = touchDistance(e.touches[0], e.touches[1]);
         pinchStartZoom = pageZoom;
       }
     }, { passive: true });
-    el.addEventListener("touchmove", function(e){
+    el.addEventListener("touchmove", function (e) {
       if (viewMode === "ayah") return;
-      if (e.touches.length === 2 && pinchStartDist){
+      if (e.touches.length === 2 && pinchStartDist) {
         e.preventDefault();
         scheduleZoom(pinchStartZoom * (touchDistance(e.touches[0], e.touches[1]) / pinchStartDist));
       }
     }, { passive: false });
-    el.addEventListener("touchend", function(e){
+    el.addEventListener("touchend", function (e) {
       if (e.touches.length < 2) pinchStartDist = null;
     });
     // trackpad pinch — Chrome/Firefox/Safari all report it as a wheel event with ctrlKey set
-    el.addEventListener("wheel", function(e){
+    el.addEventListener("wheel", function (e) {
       if (viewMode === "ayah") return;
       if (!e.ctrlKey) return;
       e.preventDefault();
@@ -2830,22 +2867,22 @@
   var SWIPE_MIN_DX = 60;
   var SWIPE_DOMINANCE = 1.5;
 
-  function wireSwipeNavigation(el){
+  function wireSwipeNavigation(el) {
     var startX = 0, startY = 0, tracking = false;
 
-    el.addEventListener("touchstart", function(e){
-      if (swipeLocked()){ tracking = false; return; } // a word selection (or its just-released trailing touch) owns this gesture
-      if (e.touches.length !== 1){ tracking = false; return; } // pinch start — not a swipe
+    el.addEventListener("touchstart", function (e) {
+      if (swipeLocked()) { tracking = false; return; } // a word selection (or its just-released trailing touch) owns this gesture
+      if (e.touches.length !== 1) { tracking = false; return; } // pinch start — not a swipe
       var line = e.target.closest ? e.target.closest(".mushaf-line") : null;
-      if (line && line.scrollWidth > line.clientWidth + 1){ tracking = false; return; }
+      if (line && line.scrollWidth > line.clientWidth + 1) { tracking = false; return; }
       tracking = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
     }, { passive: true });
 
-    el.addEventListener("touchcancel", function(){ tracking = false; });
+    el.addEventListener("touchcancel", function () { tracking = false; });
 
-    el.addEventListener("touchend", function(e){
+    el.addEventListener("touchend", function (e) {
       if (!tracking) return;
       tracking = false;
       if (swipeLocked()) return; // the hold fired mid-gesture (or just ended) — not a page turn
@@ -2858,27 +2895,27 @@
   }
 
   // ---------------- keyboard: space to reveal next word, backspace to undo ----------------
-  document.addEventListener("keydown", function(e){
+  document.addEventListener("keydown", function (e) {
     var tag = (e.target.tagName || "").toLowerCase();
     if (tag === "input" || tag === "textarea") return;
 
-    if (e.code === "Space"){
+    if (e.code === "Space") {
       e.preventDefault();
       moveCursor(1);
-    } else if (e.key === "Backspace"){
+    } else if (e.key === "Backspace") {
       e.preventDefault();
       moveCursor(-1);
     }
 
-    if (e.key === "ArrowRight"){
+    if (e.key === "ArrowRight") {
       goToPage(currentPage + 1);
-    } else if (e.key === "ArrowLeft"){
+    } else if (e.key === "ArrowLeft") {
       goToPage(currentPage - 1);
     }
   });
 
   // ---------------- boot ----------------
-  function boot(){
+  function boot() {
     renderSidebar();
     renderBookmarkList();
     renderNoteList();
@@ -2888,20 +2925,20 @@
     renderPage(1);
   }
 
-  try{
+  try {
     boot();
-  } catch(err){
+  } catch (err) {
     console.error(err);
     reader.innerHTML =
       '<div class="center-screen">' +
-        '<div class="ar">تَعَذَّرَ التَحْمِيل</div>' +
-        '<div>Gagal memuat aplikasi. Coba muat ulang halaman ini.</div>' +
+      '<div class="ar">تَعَذَّرَ التَحْمِيل</div>' +
+      '<div>Gagal memuat aplikasi. Coba muat ulang halaman ini.</div>' +
       '</div>';
   }
 
   // collapse sidebar by default wherever it renders as an overlay (--ayah-size for narrow
   // screens is set in CSS)
-  if (isOverlaySidebarMode()){
+  if (isOverlaySidebarMode()) {
     shell.classList.add("collapsed");
     fitLinesToWidth();
   }

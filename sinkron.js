@@ -26,18 +26,18 @@ let unsubscribeSnapshot = null;
 let localSettings = null;
 
 // Elemen DOM
-const txtUserInfo = document.getElementById('user-info');
-const btnLogin = document.getElementById('btn-login');
-const btnLogout = document.getElementById('btn-logout');
+const txtUserInfo = document.getElementById('userInfo');
+const btnLogin = document.getElementById('btnLogin');
+const btnLogout = document.getElementById('btnLogout');
 const sectSettings = document.getElementById('settings-section');
 const chkDarkMode = document.getElementById('chk-dark-mode');
 const selFontSize = document.getElementById('sel-font-size');
-const txtSyncStatus = document.getElementById('sync-status');
+const txtSyncStatus = document.getElementById('syncStatus');
 
 // --- AMBIL DARI LOCALSTORAGE DI AWAL (Instant Load, Tanpa Nunggu Auth/Internet) ---
 function loadInitialLocalData() {
     const rawData = localStorage.getItem(STORAGE_KEY);
-    if (rawData) {
+    if (rawData && sectSettings) {
         localSettings = JSON.parse(rawData);
         applySettingsToUI(localSettings);
         sectSettings.classList.remove('hidden'); // Tampilkan setingan meskipun offline/belum login
@@ -47,7 +47,7 @@ loadInitialLocalData();
 
 // --- FUNGSI UPDATE UI ---
 function applySettingsToUI(settings) {
-    if (!settings) return;
+    if (!settings || !chkDarkMode || !selFontSize) return;
 
     // Terapkan ke elemen input
     chkDarkMode.checked = settings.theme === 'dark';
@@ -89,10 +89,26 @@ async function handleSettingsChange() {
     }
 }
 
-// Event Listener untuk Perubahan Input User
-chkDarkMode.addEventListener('change', handleSettingsChange);
-selFontSize.addEventListener('change', handleSettingsChange);
+async function saveSettingsToCloud(settingName, settingValue) {
+    if (currentUserId) {
+        try {
+            const docRef = doc(db, "users", currentUserId, "config", settingName);
+            await setDoc(docRef, settingValue, { merge: true });
+            txtSyncStatus.innerText = "Status: Tersinkronisasi dengan Cloud";
+        } catch (error) {
+            console.warn("Gagal sinkron cloud (Offline).", error);
+            txtSyncStatus.innerText = "Status: Tersimpan Lokal (Menunggu Online)";
+        }
+    }
+}
 
+window.sinkron_saveSettingsToCloud = saveSettingsToCloud;
+
+if (chkDarkMode && selFontSize) {
+    // Event Listener untuk Perubahan Input User
+    chkDarkMode.addEventListener('change', handleSettingsChange);
+    selFontSize.addEventListener('change', handleSettingsChange);
+}
 
 // --- LOGIKA SINKRONISASI REAL-TIME DENGAN FIRESTORE ---
 function startCloudSync(userId) {
@@ -123,6 +139,43 @@ function startCloudSync(userId) {
     });
 }
 
+function startSettingCloudSync(userId, settingName, applyUi) {
+    if (!applyUi) {
+        return;
+    }
+    if (unsubscribeSnapshot) unsubscribeSnapshot(); // Bersihkan listener lama jika ada
+
+    const docRef = doc(db, "users", userId, "config", settingName);
+    const rawData = localStorage.getItem(settingName);
+    let locals = null;
+    if (rawData) {
+        locals = JSON.parse(rawData);
+    }
+
+    unsubscribeSnapshot = onSnapshot(docRef, (snapshot) => {
+        if (snapshot.exists()) {
+            const cloudSettings = snapshot.data();
+            // Bandingkan timestamp: Ambil yang paling baru
+            if (!locals || cloudSettings.lastUpdated > locals.lastUpdated) {
+                localStorage.setItem(settingName, JSON.stringify(cloudSettings));
+                locals = cloudSettings;
+                applyUi(cloudSettings);
+                txtSyncStatus.innerText = "Status: Diperbarui dari Device Lain";
+            }
+            // Jika data lokal lebih baru daripada cloud (kasus habis offline lalu online lagi)
+            else if (locals && cloudSettings.lastUpdated < locals.lastUpdated) {
+                setDoc(docRef, locals, { merge: true });
+                txtSyncStatus.innerText = "Status: Memperbarui Cloud...";
+            }
+        } else if (locals) {
+            // Kasus user baru pertama kali login di device ini tapi lokal sudah ada data settings
+            setDoc(docRef, localSettings, { merge: true });
+        }
+    });
+}
+
+window.sinkron_startSettingCloudSync = startSettingCloudSync;
+
 // --- SISTEM OTENTIKASI (AUTH) ---
 onAuthStateChanged(auth, (user) => {
     if (user) {
@@ -130,10 +183,15 @@ onAuthStateChanged(auth, (user) => {
         txtUserInfo.innerText = `Halo, ${user.displayName || user.email}`;
         btnLogin.classList.add('hidden');
         btnLogout.classList.remove('hidden');
-        sectSettings.classList.remove('hidden');
+        if (sectSettings) {
+            sectSettings.classList.remove('hidden');
+        }
 
         // Mulai sinkronisasi cloud setelah user sukses terverifikasi
         startCloudSync(user.uid);
+        if (window.app_startBookmarkCloudSync) {
+            window.app_startBookmarkCloudSync(user.uid);
+        }
     } else {
         currentUserId = null;
         txtUserInfo.innerText = "Anda belum login. Pengaturan hanya disimpan di browser ini.";
